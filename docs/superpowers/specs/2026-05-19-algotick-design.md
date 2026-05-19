@@ -227,6 +227,20 @@ interface MarketAdapter {
 | (symbol, kind) (PK) | text, text | kind: "quote" / "financials" / ... |
 | last_fetched_at | timestamptz | |
 
+**`validation_results`** — 교차검증 실행 결과 (감사/디버그용. 자세한 룰은 §14)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id (PK) | uuid | |
+| symbol | text | 대상 종목 |
+| kind | text | "quote" / "financials" / "candle" 등 |
+| ts | timestamptz | 검증 실행 시각 |
+| severity | text | "error" / "warning" / "info" |
+| code | text | 룰 코드 (예: "MARKET_CAP_MISMATCH", "OHLC_INVARIANT") |
+| message | text | 사람용 메시지 |
+| details | jsonb | 검증 컨텍스트 (계산값/기대값/소스 등) |
+
+> 모든 시세/재무/일봉 응답에는 `provenance`(데이터 출처) 메타가 함께 저장된다. 컬럼 추가 대신 각 테이블의 `source` 텍스트 컬럼 + 필요 시 jsonb data 안의 `_provenance` 키로 표현. 신뢰도 태그(`actual`/`estimated`/`assumed`)는 분석 데이터(`financials`)의 `data` jsonb 내부에 항목별로 명시한다.
+
 ### 3.2 인덱스
 - `quotes_intraday`: BRIN on (ts) — 시계열 효율
 - `quotes_daily`: BTREE on (symbol, date DESC)
@@ -236,6 +250,7 @@ interface MarketAdapter {
 - `index_quotes_intraday`: BRIN on (ts)
 - `index_quotes_daily`: BTREE on (code, date DESC)
 - `market_events`: BTREE on (event_date, market) — 캘린더 조회용
+- `validation_results`: BTREE on (symbol, ts DESC), BTREE on (severity, ts DESC) — 최근 경고 조회용
 
 ---
 
@@ -262,10 +277,12 @@ interface MarketAdapter {
 
 #### 하단 5탭
 1. **📊 차트** — 캔들/라인, 이평선 5/20/60/120 토글, 보조지표(RSI/MACD/볼린저밴드), 신호 마커
-2. **💎 가치평가** — 분기/연간 재무제표, PER/PBR/PSR 시계열, 동종업계 비교
+2. **💎 가치평가** — 분기/연간 재무제표, PER/PBR/PSR 시계열, 동종업계 비교 (Comps), 간이 DCF(Reverse/Forward 시나리오 Bull/Base/Bear), 민감도 분석(WACC × 성장률 매트릭스). 모든 입력값은 신뢰도 태그(`[실제]`/`[추정]`/`[가정]`) 표시. 자세한 원칙은 §14.
 3. **🏛️ 기관/내부자** — 상위 기관 보유율 변화(QoQ), 내부자 매매 타임라인. 미주=13F+Form4 / 한주=DART
 4. **📰 뉴스** — 최신 헤드라인 + 출처 + 외부 링크
 5. **📋 개요** — 회사 소개, 사업 구조, 경쟁사 링크, 공시/실적 일정
+
+> 모든 수치 옆에 출처(`source`) + 신뢰도 태그 아이콘. 호버 시 어디서 가져온 값인지·언제 갱신됐는지 표시. 교차검증 경고가 있는 항목은 🟡 배지 + 호버로 어떤 검증이 걸렸는지 표시. 자세한 표현 원칙은 §14.4.
 
 ### 4.3 차트 자동 분석 (룰 기반)
 
@@ -407,6 +424,48 @@ LLM 없이 신호별 템플릿 문자열로 한 줄 해설 + 차트 시점 마�
 - "갱신 중..." — 온디맨드 fetch 진행
 - "⚠️ 1시간 전 · 새로고침" — stale
 - "📴 오프라인 데이터" — 외부 API 전체 실패
+- "🟡 데이터 경고 N건" — 교차검증에서 warning 걸린 항목 있음 (클릭 시 상세)
+
+### 5.6 검증 파이프라인 (Adapter → Validator → Persistence)
+
+모든 Adapter 응답은 DB 저장 **전에** Validator를 통과해야 한다. §14 검증 룰 참고.
+
+```
+Adapter.getQuote() / getDailyOHLCV() / getFinancials()
+      │
+      ▼
+Validator.run(response, context)
+      │     ├─ Self-consistency rules
+      │     ├─ Time-series sanity (이전 DB 값과 비교)
+      │     ├─ Range validity
+      │     └─ Cross-source (가능 시)
+      │
+      ▼ ValidationResult[]
+      │
+      ├─ error 있음 → DB 저장 X, 이전 캐시 유지, ingestion_log 갱신 X,
+      │              validation_results에 기록, 응답에 warnings 포함
+      │
+      ├─ warning 있음 → DB 저장, validation_results 기록,
+      │                 응답에 warnings 포함 → UI 🟡 배지
+      │
+      └─ 깨끗 → 정상 저장, ingestion_log 갱신
+```
+
+API 응답 형식 확장 (모든 데이터 응답):
+
+```typescript
+{
+  data: { ... },
+  freshness: 'fresh' | 'stale' | 'offline',
+  lastFetchedAt: '2026-05-19T...',
+  warnings?: Array<{
+    severity: 'warning' | 'info';
+    code: string;          // "MARKET_CAP_MISMATCH", "PRICE_JUMP_LARGE", ...
+    message: string;
+    details?: Record<string, unknown>;
+  }>;
+}
+```
 
 ---
 
@@ -599,3 +658,166 @@ main          (안정)
 1. 본 스펙 사용자 리뷰 → 승인
 2. `superpowers:writing-plans`로 구현 계획 작성 (작업 항목 단위로 분해)
 3. `superpowers:executing-plans` 또는 직접 OP-001부터 구현 시작
+
+---
+
+## 14. 데이터 신뢰도 · 교차검증 · 표현 원칙
+
+> 참고: 본 섹션은 사용자가 별도로 가져온 [stock-analysis 스킬](https://github.com/...)의 핵심 원칙을 AlgoTick 시스템에 녹여낸 것이다. 외부 API에서 페치한 값을 그대로 신뢰하지 않고 명시적으로 검증/표시한다.
+
+### 14.1 데이터 신뢰도 태그 시스템
+
+분석 데이터(`financials`, DCF 결과 등)의 각 항목은 다음 3가지 태그 중 하나를 가진다:
+
+| 태그 | 의미 | 예시 |
+|---|---|---|
+| `actual` (실제) | 공시·거래소 데이터 등 확인된 팩트 | 매출액, 주가, 발행주식수 |
+| `estimated` (추정) | 컨센서스·계산값 | 순이익(컨센서스), EBITDA(영업이익+추정 D&A), 피어 멀티플 |
+| `assumed` (가정) | 분석자가 설정한 시나리오 값 | DCF 성장률, 시나리오 확률, 베타, 유효세율 |
+
+저장 형식 (`financials.data` jsonb 내):
+
+```jsonc
+{
+  "revenue": {
+    "value": 391035000000,
+    "currency": "USD",
+    "confidence": "actual",
+    "source": "yahoo",
+    "asOf": "2025-09-30",
+    "fetchedAt": "2026-05-19T15:00:00Z"
+  },
+  "ebitda": {
+    "value": 130000000000,
+    "currency": "USD",
+    "confidence": "estimated",
+    "source": "calc",
+    "formula": "op_income + d_and_a",
+    "asOf": "2025-09-30"
+  }
+}
+```
+
+UI에서는 각 메트릭 옆에 작은 아이콘 (●=actual, ◐=estimated, ○=assumed) + 호버 시 출처/계산식/갱신 시각 표시.
+
+### 14.2 교차검증 룰 (Validator)
+
+모든 Adapter 응답은 DB 저장 전 Validator를 통과해야 한다. 룰은 `packages/server/src/validators/` 모듈에 단위 함수로 정의.
+
+#### 14.2.1 Self-consistency (단일 응답 내부 정합성)
+| 코드 | 룰 | 임계 | 심각도 |
+|---|---|---|---|
+| `MARKET_CAP_MISMATCH` | `market_cap` ≈ `price × shares_outstanding` | 5% 이내 | error |
+| `OHLC_INVARIANT` | `high ≥ max(open,close)`, `low ≤ min(open,close)`, `high ≥ low` | 엄격 | error |
+| `EBITDA_FORMULA` | `EBITDA ≈ op_income + d_and_a` | 10% 이내 | warning |
+| `INCOME_STATEMENT_BALANCE` | `revenue − COGS − SG&A ≈ op_income` | 5% 이내 | warning |
+| `BALANCE_SHEET_BALANCE` | `assets ≈ liabilities + equity` | 1% 이내 | warning |
+
+#### 14.2.2 Time-series sanity (시계열 정합성, 이전 DB 값과 비교)
+| 코드 | 룰 | 임계 | 심각도 |
+|---|---|---|---|
+| `PRICE_JUMP_LARGE` | 직전 봉 대비 가격 변동 | ±20% 초과 시 | warning (분할/배당 후보) |
+| `VOLUME_ZERO` | 거래량 = 0 | 즉시 | info (휴장 가능) |
+| `FUTURE_DATE` | 일봉 `date > today` | 즉시 | error |
+| `STALE_TIMESTAMP` | 응답 `ts`가 1시간 이상 과거 | 즉시 | warning |
+
+#### 14.2.3 Range validity (범위 합리성)
+| 코드 | 룰 | 임계 | 심각도 |
+|---|---|---|---|
+| `PER_RANGE` | 0 < PER < 1000 | 범위 외 | warning |
+| `PBR_RANGE` | 0 < PBR < 100 | 범위 외 | warning |
+| `ROE_RANGE` | −1.0 < ROE < 10.0 | 범위 외 | warning |
+| `MARKET_CAP_POSITIVE` | market_cap > 0 | 0 이하 | error |
+| `VOLUME_NEGATIVE` | volume ≥ 0 | 음수 | error |
+| `WACC_RANGE` | 0.03 ≤ WACC ≤ 0.25 | 범위 외 | error (DCF 모듈) |
+
+#### 14.2.4 Cross-source (다른 소스와 비교, 가능 시)
+| 코드 | 룰 | 임계 | 심각도 |
+|---|---|---|---|
+| `CROSS_SOURCE_PRICE` | 두 소스의 시세 차이 (예: 한주 네이버 vs Yahoo) | 2% 초과 | warning |
+| `CROSS_SOURCE_MARKET_CAP` | 두 소스의 시가총액 차이 | 5% 초과 | warning |
+
+Cross-source는 두 소스가 같은 데이터를 제공할 때만 적용. Stage 1(미주, Yahoo 단일)에서는 적용 X. Stage 4 이후 한주 네이버+DART 교차 가능.
+
+### 14.3 Validator 인터페이스
+
+```typescript
+// packages/server/src/validators/types.ts
+export type Severity = 'error' | 'warning' | 'info';
+
+export interface ValidationResult {
+  severity: Severity;
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ValidatorContext {
+  symbol: string;
+  previousValue?: unknown;  // 시계열 검증용
+  market: 'US' | 'KR';
+}
+
+export type Validator<T> = (data: T, ctx: ValidatorContext) => ValidationResult[];
+```
+
+각 데이터 종류(quote/candle/financials)마다 룰 모음 함수:
+- `validateQuote(quote, ctx): ValidationResult[]`
+- `validateCandle(candle, prev?, ctx): ValidationResult[]`
+- `validateFinancials(fin, ctx): ValidationResult[]`
+
+### 14.4 UI 표현 원칙 (초보자 친화)
+
+#### 14.4.1 신뢰도 시각화
+- 모든 메트릭은 `<Metric value source confidence />` 컴포넌트로 표시
+- 우상단 작은 점 아이콘 — ●(actual, 진녹) / ◐(estimated, 노랑) / ○(assumed, 회색)
+- 호버 시 툴팁: 출처, 갱신 시각, (계산식인 경우) 공식
+
+#### 14.4.2 용어 풀이
+- 금융 용어 첫 등장 시 괄호 안 짧은 풀이 — "EV/EBITDA(기업가치를 영업이익+감가상각비로 나눈 배수)"
+- 헤더 옆 ⓘ 아이콘 호버 시 [docs/glossary.md](../../glossary.md)에서 정의 가져와 표시
+- 한 문장에 전문 용어 2개 이상 금지
+
+#### 14.4.3 비교 기반 표시
+- "PER 28.4" → "PER 28.4 · 업계 평균 18.5 대비 1.5배 비쌈"
+- "ROE 15%" → "ROE 15% · 업계 상위 25%"
+- 단순 수치만 표시 금지. 항상 비교/의미 부여 동반
+
+#### 14.4.4 검증 경고 표시
+- 메트릭이 warning을 가지면 우상단 🟡, error면 🔴 (단 error는 거의 표시 안 됨 — 저장이 안 되므로 이전 값이 그대로 표시)
+- 호버 시 어떤 검증이 걸렸는지 메시지 표시
+- 헤더에 "🟡 데이터 경고 N건" 배지 → 클릭 시 모달로 전체 warning 리스트
+
+### 14.5 Provenance(출처) 타입
+
+`packages/shared/src/schema/provenance.ts`:
+
+```typescript
+import { z } from 'zod';
+
+export const ConfidenceSchema = z.enum(['actual', 'estimated', 'assumed']);
+export type Confidence = z.infer<typeof ConfidenceSchema>;
+
+export const SourceSchema = z.enum([
+  'yahoo', 'sec', 'naver', 'dart', 'finnhub',
+  'calc',           // 계산값
+  'user',           // 사용자 입력(포트폴리오 매수가 등)
+  'assumption'      // DCF 시나리오 가정
+]);
+export type Source = z.infer<typeof SourceSchema>;
+
+export const ProvenanceSchema = z.object({
+  source: SourceSchema,
+  confidence: ConfidenceSchema,
+  fetchedAt: z.string().datetime().optional(),
+  asOf: z.string().optional(),     // 데이터의 기준 시점 (분기말 등)
+  formula: z.string().optional(),  // 계산값인 경우 공식
+});
+export type Provenance = z.infer<typeof ProvenanceSchema>;
+```
+
+### 14.6 운영 시 검증 결과 활용
+
+- `/api/__validations__?since=...` (개발자 전용 라우트) — 최근 N건 warning/error 조회
+- Settings 페이지에 "최근 데이터 경고" 섹션 — 마지막 24시간 warning 종류별 카운트
+- 같은 종목에서 반복되는 warning → 해당 종목·소스를 의심하라는 신호

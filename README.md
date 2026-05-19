@@ -18,6 +18,8 @@
 - 🔬 **스크리너** — PER/PBR/ROE 등 조건 빌더
 - ⚖️ **종목 비교** — 2~3개 동시
 - 🌙 **다크/라이트 토글**
+- 🔍 **데이터 신뢰도·교차검증** — 모든 수치에 출처/신뢰도 태그(`[실제]`/`[추정]`/`[가정]`), Adapter 응답은 DB 저장 전 Validator 통과 필수 (시가총액 정합성/OHLC 불변식/시계열 점프/범위 합리성 등). 자세한 룰: [디자인 스펙 §14](docs/superpowers/specs/2026-05-19-algotick-design.md#14-데이터-신뢰도--교차검증--표현-원칙)
+- 📖 **금융 용어 풀이** — UI ⓘ 호버 시 [glossary](docs/glossary.md) 기반 한국어 풀이
 
 ---
 
@@ -146,6 +148,7 @@ algotick/
 | `ingestion_log` | 페치 시각 추적 (stale 판정) |
 | `indices` / `index_quotes_intraday` / `index_quotes_daily` | 시장 지수 (S&P500, KOSPI, VIX 등) |
 | `market_events` | 시장 캘린더 (실적 발표, FOMC, CPI 등) |
+| `validation_results` | Adapter 응답 교차검증 결과 (디버그/감사용) |
 
 > 이평선은 별도 저장 없이 `quotes_daily.close`에서 윈도우 함수로 즉석 계산.
 > 상세 스키마는 [디자인 스펙 §3](docs/superpowers/specs/2026-05-19-algotick-design.md#3-데이터-모델-postgresql) 참고.
