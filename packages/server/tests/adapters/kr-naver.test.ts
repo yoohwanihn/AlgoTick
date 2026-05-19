@@ -138,3 +138,11 @@ describe('KrNaverAdapter.getInsiderTrades (stub)', () => {
     expect(r).toEqual([]);
   });
 });
+
+describe('KrNaverAdapter.getProfile (stub)', () => {
+  it('returns null (KR uses seed sector/industry)', async () => {
+    const adapter = new KrNaverAdapter();
+    const r = await adapter.getProfile('005930.KS');
+    expect(r).toBeNull();
+  });
+});

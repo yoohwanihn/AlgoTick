@@ -46,6 +46,7 @@ export const handlers = [
         financials: [],
         news: [],
         insiderTrades: [],
+        profile: { name: 'Apple Inc.', sector: 'Technology', industry: 'Consumer Electronics', country: 'US' },
       },
       freshness: 'fresh',
       lastFetchedAt: new Date().toISOString(),

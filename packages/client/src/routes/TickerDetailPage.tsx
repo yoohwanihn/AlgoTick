@@ -28,7 +28,18 @@ export function TickerDetailPage() {
       </div>
       <TickerSummary res={data} />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-        <TickerTabs candles={data.data.candles} signals={data.data.signals} financials={data.data.financials} news={data.data.news} insiderTrades={data.data.insiderTrades} />
+        <TickerTabs
+          candles={data.data.candles}
+          signals={data.data.signals}
+          financials={data.data.financials}
+          news={data.data.news}
+          insiderTrades={data.data.insiderTrades}
+          profile={data.data.profile}
+          symbol={data.data.symbol}
+          market={data.data.market}
+          exchange={data.data.exchange}
+          currency={data.data.currency}
+        />
         <SignalPanel signals={data.data.signals} />
       </div>
     </div>

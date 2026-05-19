@@ -21,18 +21,25 @@ enum Exchange {
 }
 
 model Ticker {
-  symbol     String   @id
-  market     Market
-  exchange   Exchange
-  nameEn     String?
-  nameKo     String?
-  sector     String?
-  industry   String?
-  currency   String
-  listedAt   DateTime?
-  delistedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  symbol      String    @id
+  market      Market
+  exchange    Exchange
+  nameEn      String?
+  nameKo      String?
+  sector      String?
+  industry    String?
+  currency    String
+  listedAt    DateTime?
+  delistedAt  DateTime?
+  // profile fields (nullable):
+  description String?
+  weburl      String?
+  logo        String?
+  phone       String?
+  ipo         DateTime?
+  country     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   quotesIntraday QuoteIntraday[]
   quotesDaily    QuoteDaily[]
