@@ -7,6 +7,7 @@ import { DashboardPage } from './routes/DashboardPage.js';
 import { PortfolioPage } from './routes/PortfolioPage.js';
 import { ScreenerPage } from './routes/ScreenerPage.js';
 import { ComparePage } from './routes/ComparePage.js';
+import { MarketPage } from './routes/MarketPage.js';
 
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/screener" element={<ScreenerPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/market" element={<MarketPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
