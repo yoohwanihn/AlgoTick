@@ -2,6 +2,21 @@ import type { MarketAdapter } from '../adapters/base.js';
 import { getPrisma } from '../db.js';
 import type { CachedResponse, ValidationResult, Market } from '@algotick/shared';
 import { validateQuote, validateCandle, hasErrors, pickWarnings } from '../validators/index.js';
+import { sma, rsi, macd, bollinger, detectSignals, type Signal, type CandleForSignals } from '../indicators/index.js';
+
+export interface IndicatorSeries {
+  ma5: Array<number | null>;
+  ma20: Array<number | null>;
+  ma60: Array<number | null>;
+  ma120: Array<number | null>;
+  rsi14: Array<number | null>;
+  macdLine: Array<number | null>;
+  macdSignal: Array<number | null>;
+  macdHistogram: Array<number | null>;
+  bollingerMiddle: Array<number | null>;
+  bollingerUpper: Array<number | null>;
+  bollingerLower: Array<number | null>;
+}
 
 export interface TickerDetail {
   symbol: string;
@@ -23,6 +38,8 @@ export interface TickerDetail {
     close: number;
     volume: number;
   }>;
+  indicators: IndicatorSeries;
+  signals: Signal[];
 }
 
 const STALE_QUOTE_MS = 60 * 1000;
@@ -164,14 +181,46 @@ async function persistValidationResults(
   });
 }
 
+function computeIndicators(candles: Array<{ date: string; close: number; volume: number }>): { indicators: IndicatorSeries; signals: Signal[] } {
+  const closes = candles.map((c) => c.close);
+  const macdR = macd(closes);
+  const bollR = bollinger(closes, 20, 2);
+  const indicators: IndicatorSeries = {
+    ma5: sma(closes, 5),
+    ma20: sma(closes, 20),
+    ma60: sma(closes, 60),
+    ma120: sma(closes, 120),
+    rsi14: rsi(closes, 14),
+    macdLine: macdR.macd,
+    macdSignal: macdR.signal,
+    macdHistogram: macdR.histogram,
+    bollingerMiddle: bollR.middle,
+    bollingerUpper: bollR.upper,
+    bollingerLower: bollR.lower,
+  };
+  const candlesForSignals: CandleForSignals[] = candles.map((c) => ({ date: c.date, close: c.close, volume: c.volume }));
+  const signals = detectSignals(candlesForSignals);
+  return { indicators, signals };
+}
+
 async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'market' | 'exchange' | 'name' | 'currency'>> {
   const prisma = getPrisma();
   const latest = await prisma.quoteIntraday.findFirst({ where: { symbol }, orderBy: { ts: 'desc' } });
-  const candles = await prisma.quoteDaily.findMany({
+  const rows = await prisma.quoteDaily.findMany({
     where: { symbol },
     orderBy: { date: 'desc' },
     take: 365,
   });
+  const ascRows = rows.reverse();
+  const ascCandles = ascRows.map((c) => ({
+    date: c.date.toISOString().slice(0, 10),
+    open: Number(c.open),
+    high: Number(c.high),
+    low: Number(c.low),
+    close: Number(c.close),
+    volume: Number(c.volume),
+  }));
+  const { indicators, signals } = computeIndicators(ascCandles);
   return {
     symbol,
     quote: latest
@@ -182,13 +231,8 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
           ts: latest.ts.toISOString(),
         }
       : null,
-    candles: candles.reverse().map((c) => ({
-      date: c.date.toISOString().slice(0, 10),
-      open: Number(c.open),
-      high: Number(c.high),
-      low: Number(c.low),
-      close: Number(c.close),
-      volume: Number(c.volume),
-    })),
+    candles: ascCandles,
+    indicators,
+    signals,
   };
 }

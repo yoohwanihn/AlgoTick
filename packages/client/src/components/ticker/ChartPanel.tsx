@@ -1,12 +1,6 @@
 import { useEffect, useRef } from 'react';
-import {
-  createChart,
-  type IChartApi,
-  type CandlestickData,
-  type LineData,
-  ColorType,
-} from 'lightweight-charts';
-import type { TickerCandle } from '../../types/api.js';
+import { createChart, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, type SeriesMarker, ColorType } from 'lightweight-charts';
+import type { TickerCandle, Signal } from '../../types/api.js';
 
 function sma(values: number[], period: number): Array<number | null> {
   const out: Array<number | null> = [];
@@ -21,13 +15,32 @@ function sma(values: number[], period: number): Array<number | null> {
 
 const MA_PERIODS = [5, 20, 60, 120] as const;
 const MA_COLORS: Record<(typeof MA_PERIODS)[number], string> = {
-  5: '#fbbf24',
-  20: '#a78bfa',
-  60: '#60a5fa',
-  120: '#f472b6',
+  5: '#fbbf24', 20: '#a78bfa', 60: '#60a5fa', 120: '#f472b6',
 };
 
-export function ChartPanel({ candles }: { candles: TickerCandle[] }) {
+function signalToMarker(s: Signal): SeriesMarker<string> {
+  const colorMap: Record<Signal['severity'], string> = {
+    positive: '#10b981', negative: '#ef4444', warning: '#f59e0b', info: '#94a3b8',
+  };
+  let position: SeriesMarker<string>['position'] = 'inBar';
+  let shape: SeriesMarker<string>['shape'] = 'circle';
+  if (s.severity === 'positive') { position = 'belowBar'; shape = 'arrowUp'; }
+  else if (s.severity === 'negative') { position = 'aboveBar'; shape = 'arrowDown'; }
+  return {
+    time: s.date as never,
+    position, shape,
+    color: colorMap[s.severity],
+    text: s.code.replace(/_/g, ' '),
+    size: 1,
+  };
+}
+
+interface Props {
+  candles: TickerCandle[];
+  signals?: Signal[];
+}
+
+export function ChartPanel({ candles, signals = [] }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -50,45 +63,38 @@ export function ChartPanel({ candles }: { candles: TickerCandle[] }) {
     });
     chartRef.current = chart;
 
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#10b981',
-      downColor: '#ef4444',
-      borderVisible: false,
-      wickUpColor: '#10b981',
-      wickDownColor: '#ef4444',
+    const candleSeries: ISeriesApi<'Candlestick'> = chart.addCandlestickSeries({
+      upColor: '#10b981', downColor: '#ef4444', borderVisible: false,
+      wickUpColor: '#10b981', wickDownColor: '#ef4444',
     });
-
     const candleData: CandlestickData[] = candles.map((c) => ({
-      time: c.date as CandlestickData['time'],
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
+      time: c.date as never, open: c.open, high: c.high, low: c.low, close: c.close,
     }));
     candleSeries.setData(candleData);
+
+    if (signals.length > 0) {
+      const markers = signals.map(signalToMarker);
+      candleSeries.setMarkers(markers);
+    }
 
     const closes = candles.map((c) => c.close);
     for (const p of MA_PERIODS) {
       const maSeries = chart.addLineSeries({
-        color: MA_COLORS[p],
-        lineWidth: 1,
-        lastValueVisible: false,
-        priceLineVisible: false,
+        color: MA_COLORS[p], lineWidth: 1, lastValueVisible: false, priceLineVisible: false,
       });
       const maValues = sma(closes, p);
       const maData: LineData[] = candles
-        .map((c, i) => ({ time: c.date as LineData['time'], value: maValues[i] }))
-        .filter((d): d is LineData => d.value !== null && d.value !== undefined);
+        .flatMap((c, i) => {
+          const value = maValues[i];
+          if (value === null || value === undefined) return [];
+          return [{ time: c.date as LineData['time'], value }];
+        });
       maSeries.setData(maData);
     }
 
     chart.timeScale().fitContent();
-
-    return () => {
-      chart.remove();
-      chartRef.current = null;
-    };
-  }, [candles]);
+    return () => { chart.remove(); chartRef.current = null; };
+  }, [candles, signals]);
 
   if (candles.length === 0) {
     return (
@@ -100,7 +106,7 @@ export function ChartPanel({ candles }: { candles: TickerCandle[] }) {
 
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-200 dark:border-slate-800 text-xs">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-200 dark:border-slate-800 text-xs flex-wrap">
         <span className="text-slate-500">이평선:</span>
         {MA_PERIODS.map((p) => (
           <span key={p} className="flex items-center gap-1">
@@ -108,6 +114,9 @@ export function ChartPanel({ candles }: { candles: TickerCandle[] }) {
             {p}일
           </span>
         ))}
+        {signals.length > 0 && (
+          <span className="text-slate-500 ml-2">· 신호 마커 {signals.length}개</span>
+        )}
       </div>
       <div ref={containerRef} className="h-[420px]" />
     </div>

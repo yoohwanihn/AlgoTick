@@ -4,6 +4,7 @@ import { TickerHeader } from '../components/ticker/TickerHeader.js';
 import { TickerSummary } from '../components/ticker/TickerSummary.js';
 import { TickerTabs } from '../components/ticker/TickerTabs.js';
 import { WarningBadge } from '../components/ui/WarningBadge.js';
+import { SignalPanel } from '../components/ticker/SignalPanel.js';
 
 export function TickerDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -26,7 +27,10 @@ export function TickerDetailPage() {
         <WarningBadge warnings={data.warnings ?? []} />
       </div>
       <TickerSummary res={data} />
-      <TickerTabs candles={data.data.candles} />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        <TickerTabs candles={data.data.candles} signals={data.data.signals} />
+        <SignalPanel signals={data.data.signals} />
+      </div>
     </div>
   );
 }
