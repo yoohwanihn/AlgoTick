@@ -1,5 +1,5 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem, CompanyProfile } from './base.js';
 import { AdapterError } from './base.js';
 import { loadConfig } from '../config.js';
 
@@ -18,6 +18,20 @@ function pickNumber(m: Record<string, number | string | null>, key: string): num
   if (typeof v !== 'number' || !Number.isFinite(v)) return null;
   return v;
 }
+const FINNHUB_PROFILE_URL = (symbol: string, key: string) =>
+  `https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`;
+
+interface FinnhubProfileRaw {
+  name?: string;
+  country?: string;
+  exchange?: string;
+  ipo?: string;
+  finnhubIndustry?: string;
+  phone?: string;
+  weburl?: string;
+  logo?: string;
+}
+
 const FINNHUB_INSIDER_URL = (symbol: string, key: string) =>
   `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`;
 
@@ -274,6 +288,26 @@ export class UsYahooAdapter implements MarketAdapter {
         }));
     } catch (_e) {
       return [];
+    }
+  }
+
+  async getProfile(symbol: string): Promise<CompanyProfile | null> {
+    const cfg = loadConfig();
+    if (!cfg.finnhubApiKey || cfg.finnhubApiKey.length === 0) return null;
+    try {
+      const body = await fetchJson<FinnhubProfileRaw>(FINNHUB_PROFILE_URL(symbol, cfg.finnhubApiKey), 'finnhub');
+      if (!body || !body.name) return null;
+      return {
+        name: body.name,
+        weburl: body.weburl,
+        logo: body.logo,
+        phone: body.phone,
+        ipo: body.ipo ? new Date(body.ipo) : undefined,
+        country: body.country,
+        industry: body.finnhubIndustry,
+      };
+    } catch (_e) {
+      return null;
     }
   }
 

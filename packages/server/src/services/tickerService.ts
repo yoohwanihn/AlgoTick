@@ -13,6 +13,18 @@ export interface NewsItemResponse {
   publishedAt: string;
 }
 
+export interface ProfileResponse {
+  name?: string;
+  description?: string;
+  weburl?: string;
+  logo?: string;
+  phone?: string;
+  ipo?: string;
+  country?: string;
+  industry?: string;
+  sector?: string;
+}
+
 export interface InsiderTradeResponse {
   id: string;
   tradeDate: string;
@@ -74,10 +86,12 @@ export interface TickerDetail {
   financials: FinancialPeriodResponse[];
   news: NewsItemResponse[];
   insiderTrades: InsiderTradeResponse[];
+  profile: ProfileResponse | null;
 }
 
 const STALE_QUOTE_MS = 60 * 1000;
 const STALE_FINANCIALS_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days
+const STALE_PROFILE_MS = 7 * 24 * 60 * 60 * 1000;     // 7 days
 
 export async function getTickerDetail(
   symbol: string,
@@ -266,6 +280,36 @@ async function refreshTicker(
     });
   } catch (_e) { /* non-fatal */ }
 
+  // Profile — best-effort, 7-day stale
+  try {
+    const profileLog = await prisma.ingestionLog.findUnique({
+      where: { symbol_kind: { symbol, kind: 'profile' } },
+    });
+    const profileStale = !profileLog || Date.now() - profileLog.lastFetchedAt.getTime() > STALE_PROFILE_MS;
+    if (profileStale) {
+      const profile = await adapter.getProfile(symbol);
+      if (profile) {
+        await prisma.ticker.update({
+          where: { symbol },
+          data: {
+            weburl: profile.weburl ?? undefined,
+            logo: profile.logo ?? undefined,
+            phone: profile.phone ?? undefined,
+            ipo: profile.ipo ?? undefined,
+            country: profile.country ?? undefined,
+            industry: profile.industry ?? undefined,
+            description: profile.description ?? undefined,
+          },
+        });
+      }
+      await prisma.ingestionLog.upsert({
+        where: { symbol_kind: { symbol, kind: 'profile' } },
+        update: { lastFetchedAt: new Date() },
+        create: { symbol, kind: 'profile', lastFetchedAt: new Date() },
+      });
+    }
+  } catch (_e) { /* non-fatal */ }
+
   return collectedWarnings;
 }
 
@@ -312,6 +356,18 @@ function computeIndicators(candles: Array<{ date: string; close: number; volume:
 
 async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'market' | 'exchange' | 'name' | 'currency'>> {
   const prisma = getPrisma();
+  const masterRow = await prisma.ticker.findUnique({ where: { symbol } });
+  const profile: ProfileResponse | null = masterRow ? {
+    name: masterRow.nameEn ?? masterRow.nameKo ?? undefined,
+    description: masterRow.description ?? undefined,
+    weburl: masterRow.weburl ?? undefined,
+    logo: masterRow.logo ?? undefined,
+    phone: masterRow.phone ?? undefined,
+    ipo: masterRow.ipo?.toISOString(),
+    country: masterRow.country ?? undefined,
+    industry: masterRow.industry ?? undefined,
+    sector: masterRow.sector ?? undefined,
+  } : null;
   const latest = await prisma.quoteIntraday.findFirst({ where: { symbol }, orderBy: { ts: 'desc' } });
   const rows = await prisma.quoteDaily.findMany({
     where: { symbol },
@@ -391,5 +447,6 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     financials,
     news,
     insiderTrades,
+    profile,
   };
 }

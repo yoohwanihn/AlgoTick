@@ -74,6 +74,22 @@ vi.mock('undici', () => ({
     if (url.includes('finnhub.io/api/v1/stock/insider-transactions') && url.includes('symbol=ERRY')) {
       return { statusCode: 500, body: { json: async () => ({}), text: async () => 'oops' } };
     }
+    if (url.includes('finnhub.io/api/v1/stock/profile2') && url.includes('symbol=AAPL')) {
+      return {
+        statusCode: 200,
+        body: { json: async () => ({
+          name: 'Apple Inc', country: 'US', currency: 'USD',
+          exchange: 'NASDAQ NMS - GLOBAL MARKET', ipo: '1980-12-12',
+          marketCapitalization: 4374482.4, shareOutstanding: 14681.14,
+          finnhubIndustry: 'Technology', phone: '14089961010',
+          weburl: 'https://www.apple.com/', logo: 'https://static2.finnhub.io/...logo.png',
+          ticker: 'AAPL',
+        }) },
+      };
+    }
+    if (url.includes('finnhub.io/api/v1/stock/profile2') && url.includes('symbol=ERRZ')) {
+      return { statusCode: 500, body: { json: async () => ({}), text: async () => '' } };
+    }
     return { statusCode: 404, body: { json: async () => ({}), text: async () => '' } };
   }),
 }));
@@ -158,5 +174,25 @@ describe('UsYahooAdapter.getInsiderTrades (Finnhub)', () => {
   it('returns empty on error', async () => {
     const trades = await adapter.getInsiderTrades('ERRY');
     expect(trades).toEqual([]);
+  });
+});
+
+describe('UsYahooAdapter.getProfile (Finnhub)', () => {
+  let adapter: UsYahooAdapter;
+  beforeEach(() => { adapter = new UsYahooAdapter(); });
+
+  it('returns mapped profile for AAPL', async () => {
+    const p = await adapter.getProfile('AAPL');
+    expect(p).not.toBeNull();
+    expect(p!.name).toBe('Apple Inc');
+    expect(p!.weburl).toBe('https://www.apple.com/');
+    expect(p!.industry).toBe('Technology');
+    expect(p!.country).toBe('US');
+    expect(p!.ipo).toBeInstanceOf(Date);
+  });
+
+  it('returns null on error', async () => {
+    const p = await adapter.getProfile('ERRZ');
+    expect(p).toBeNull();
   });
 });

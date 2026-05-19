@@ -1,5 +1,5 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem, CompanyProfile } from './base.js';
 import { AdapterError } from './base.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
@@ -242,6 +242,11 @@ export class KrNaverAdapter implements MarketAdapter {
     // KR insider trades come from DART (대량보유공시·임원지분변동). Requires DART_API_KEY + corp_code mapping.
     // Stage 5e에서 DART 어댑터 통합 시 활성화.
     return [];
+  }
+
+  async getProfile(_symbol: string): Promise<CompanyProfile | null> {
+    // KR profiles는 tickers 시드의 sector/industry로 이미 충분. 본격 회사 소개는 DART corp profile에서 (Stage 5e+ 이후).
+    return null;
   }
 
   async getFinancials(symbol: string): Promise<FinancialPeriod[]> {

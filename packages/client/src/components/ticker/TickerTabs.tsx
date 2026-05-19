@@ -3,7 +3,8 @@ import { ChartPanel } from './ChartPanel.js';
 import { ValuationTab } from './ValuationTab.js';
 import { NewsTab } from './NewsTab.js';
 import { InstitutionalTab } from './InstitutionalTab.js';
-import type { TickerCandle, Signal, FinancialPeriod, NewsItem, InsiderTrade } from '../../types/api.js';
+import { OverviewTab } from './OverviewTab.js';
+import type { TickerCandle, Signal, FinancialPeriod, NewsItem, InsiderTrade, CompanyProfile } from '../../types/api.js';
 
 type TabKey = 'chart' | 'valuation' | 'institutional' | 'news' | 'overview';
 
@@ -15,23 +16,20 @@ const TABS: Array<{ key: TabKey; label: string; icon: string }> = [
   { key: 'overview', label: '개요', icon: '📋' },
 ];
 
-function Pending({ stage }: { stage: number }) {
-  return (
-    <div className="py-12 text-center text-slate-500">
-      Stage {stage}에서 구현 예정입니다.
-    </div>
-  );
-}
-
 interface Props {
   candles: TickerCandle[];
   signals?: Signal[];
   financials?: FinancialPeriod[];
   news?: NewsItem[];
   insiderTrades?: InsiderTrade[];
+  profile?: CompanyProfile | null;
+  symbol: string;
+  market: string;
+  exchange: string;
+  currency: string;
 }
 
-export function TickerTabs({ candles, signals = [], financials = [], news = [], insiderTrades = [] }: Props) {
+export function TickerTabs({ candles, signals = [], financials = [], news = [], insiderTrades = [], profile = null, symbol, market, exchange, currency }: Props) {
   const [active, setActive] = useState<TabKey>('chart');
   return (
     <div>
@@ -55,7 +53,7 @@ export function TickerTabs({ candles, signals = [], financials = [], news = [], 
         {active === 'valuation' && <ValuationTab financials={financials} />}
         {active === 'institutional' && <InstitutionalTab trades={insiderTrades} />}
         {active === 'news' && <NewsTab news={news} />}
-        {active === 'overview' && <Pending stage={5} />}
+        {active === 'overview' && <OverviewTab profile={profile} symbol={symbol} market={market} exchange={exchange} currency={currency} />}
       </div>
     </div>
   );

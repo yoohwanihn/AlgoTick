@@ -76,6 +76,18 @@ export interface InsiderTrade {
   source: string;
 }
 
+export interface CompanyProfile {
+  name?: string;
+  description?: string;
+  weburl?: string;
+  logo?: string;
+  phone?: string;
+  ipo?: string;
+  country?: string;
+  industry?: string;
+  sector?: string;
+}
+
 export interface TickerDetailData {
   symbol: string;
   market: string;
@@ -89,6 +101,7 @@ export interface TickerDetailData {
   financials: FinancialPeriod[];
   news: NewsItem[];
   insiderTrades: InsiderTrade[];
+  profile: CompanyProfile | null;
 }
 
 export interface TickerDetailResponse {

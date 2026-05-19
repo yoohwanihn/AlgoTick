@@ -61,6 +61,18 @@ export interface InsiderTradeItem {
   source: string;
 }
 
+export interface CompanyProfile {
+  name?: string;
+  description?: string;
+  weburl?: string;
+  logo?: string;
+  phone?: string;
+  ipo?: Date;
+  country?: string;
+  industry?: string;
+  sector?: string;
+}
+
 export interface MarketAdapter {
   readonly market: Market;
   getQuote(symbol: string): Promise<QuoteResult>;
@@ -69,6 +81,7 @@ export interface MarketAdapter {
   getFinancials(symbol: string): Promise<FinancialPeriod[]>;  // NEW
   getNews(symbol: string, limit?: number): Promise<NewsItem[]>;
   getInsiderTrades(symbol: string, limit?: number): Promise<InsiderTradeItem[]>;
+  getProfile(symbol: string): Promise<CompanyProfile | null>;
 }
 
 export class AdapterError extends Error {
