@@ -8,7 +8,9 @@ export async function pollActive(): Promise<{ symbols: string[]; updated: number
   const sseSubs = Array.from(activeSymbols());
   const watchlistRows = await getPrisma().watchlist.findMany({ select: { symbol: true } });
   const dbList = watchlistRows.map((r) => r.symbol);
-  const targets = Array.from(new Set([...envList, ...dbList, ...sseSubs]));
+  const lotRows = await getPrisma().portfolioLot.findMany({ select: { symbol: true }, distinct: ['symbol'] });
+  const lotList = lotRows.map((r) => r.symbol);
+  const targets = Array.from(new Set([...envList, ...dbList, ...lotList, ...sseSubs]));
   if (targets.length === 0) return { symbols: [], updated: 0 };
 
   const prisma = getPrisma();

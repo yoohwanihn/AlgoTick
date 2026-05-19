@@ -9,6 +9,7 @@ export function Header() {
         <Link to="/" className="text-xl font-bold text-accent shrink-0">🪙 AlgoTick</Link>
         <nav className="flex gap-4 text-sm text-slate-600 dark:text-slate-400 shrink-0">
           <Link to="/" className="hover:text-accent">대시보드</Link>
+          <Link to="/portfolio" className="hover:text-accent">포트폴리오</Link>
         </nav>
         <div className="flex-1 max-w-md">
           <SearchBar />

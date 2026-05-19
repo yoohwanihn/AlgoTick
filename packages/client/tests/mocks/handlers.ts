@@ -24,6 +24,11 @@ export const handlers = [
   http.post(`${BASE}/api/watchlist`, () => HttpResponse.json({ ok: true, item: { symbol: 'MOCK', position: 1, addedAt: new Date().toISOString() } })),
   http.delete(`${BASE}/api/watchlist/:symbol`, () => HttpResponse.json({ ok: true })),
 
+  http.get(`${BASE}/api/portfolio`, () => HttpResponse.json({ totalCostBasis: 0, totalMarketValue: 0, totalUnrealizedPnl: 0, totalUnrealizedPnlPct: 0, positions: [] })),
+  http.get(`${BASE}/api/portfolio/lots`, () => HttpResponse.json({ lots: [] })),
+  http.post(`${BASE}/api/portfolio/lots`, () => HttpResponse.json({ ok: true, id: 'mock-lot-id' })),
+  http.delete(`${BASE}/api/portfolio/lots/:id`, () => HttpResponse.json({ ok: true })),
+
   http.get(`${BASE}/api/ticker/:symbol`, ({ params }) => {
     const symbol = params.symbol as string;
     if (symbol === '__NOPE__') {
