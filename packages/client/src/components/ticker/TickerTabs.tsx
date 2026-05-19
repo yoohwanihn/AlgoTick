@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChartPanel } from './ChartPanel.js';
-import type { TickerCandle, Signal } from '../../types/api.js';
+import { ValuationTab } from './ValuationTab.js';
+import type { TickerCandle, Signal, FinancialPeriod } from '../../types/api.js';
 
 type TabKey = 'chart' | 'valuation' | 'institutional' | 'news' | 'overview';
 
@@ -23,9 +24,10 @@ function Pending({ stage }: { stage: number }) {
 interface Props {
   candles: TickerCandle[];
   signals?: Signal[];
+  financials?: FinancialPeriod[];
 }
 
-export function TickerTabs({ candles, signals = [] }: Props) {
+export function TickerTabs({ candles, signals = [], financials = [] }: Props) {
   const [active, setActive] = useState<TabKey>('chart');
   return (
     <div>
@@ -46,7 +48,7 @@ export function TickerTabs({ candles, signals = [] }: Props) {
       </div>
       <div>
         {active === 'chart' && <ChartPanel candles={candles} signals={signals} />}
-        {active === 'valuation' && <Pending stage={5} />}
+        {active === 'valuation' && <ValuationTab financials={financials} />}
         {active === 'institutional' && <Pending stage={5} />}
         {active === 'news' && <Pending stage={5} />}
         {active === 'overview' && <Pending stage={5} />}
