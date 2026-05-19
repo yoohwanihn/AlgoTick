@@ -18,9 +18,13 @@ const mockAdapter = {
     { symbol: 'TST', date: '2026-05-18', open: 99, high: 101, low: 98, close: 100, volume: 1000 },
   ]),
   search: vi.fn(async () => []),
+  getFinancials: vi.fn(async () => []),
+  getNews: vi.fn(async () => []),
+  getInsiderTrades: vi.fn(async () => []),
 };
 
 beforeEach(async () => {
+  await getPrisma().insiderTrade.deleteMany({ where: { symbol: 'TICKERTST' } });
   await getPrisma().ingestionLog.deleteMany({ where: { symbol: 'TICKERTST' } });
   await getPrisma().quoteIntraday.deleteMany({ where: { symbol: 'TICKERTST' } });
   await getPrisma().quoteDaily.deleteMany({ where: { symbol: 'TICKERTST' } });
@@ -31,6 +35,9 @@ beforeEach(async () => {
   });
   mockAdapter.getQuote.mockClear();
   mockAdapter.getDailyOHLCV.mockClear();
+  mockAdapter.getFinancials.mockClear();
+  mockAdapter.getNews.mockClear();
+  mockAdapter.getInsiderTrades.mockClear();
 });
 
 describe('getTickerDetail', () => {

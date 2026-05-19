@@ -38,6 +38,7 @@ model Ticker {
   quotesDaily    QuoteDaily[]
   financials     Financial[]
   news           News[]
+  insiderTrades  InsiderTrade[]
 
   @@index([market])
   @@index([exchange])
@@ -121,6 +122,30 @@ model News {
   @@index([scope, market, publishedAt(sort: Desc)])
   @@unique([symbol, externalId])
   @@map("news_items")
+}
+
+model InsiderTrade {
+  id              String    @id @default(uuid())
+  symbol          String
+  externalId      String
+  tradeDate       DateTime
+  filingDate      DateTime?
+  personName      String
+  role            String?
+  side            String
+  shares          BigInt
+  price           Decimal?  @db.Decimal(20, 6)
+  transactionCode String?
+  source          String
+  isDerivative    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@unique([symbol, externalId])
+  @@index([symbol, tradeDate(sort: Desc)])
+  @@map("insider_trades")
 }
 
 model ValidationResult {

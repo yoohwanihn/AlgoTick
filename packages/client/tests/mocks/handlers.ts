@@ -45,6 +45,7 @@ export const handlers = [
         signals: [],
         financials: [],
         news: [],
+        insiderTrades: [],
       },
       freshness: 'fresh',
       lastFetchedAt: new Date().toISOString(),
