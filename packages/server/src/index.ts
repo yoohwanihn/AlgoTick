@@ -7,6 +7,7 @@ import { getPrisma, disconnectPrisma } from './db.js';
 import { registerHealthRoute } from './api/health.js';
 import { registerSearchRoute } from './api/search.js';
 import { registerTickerRoute } from './api/ticker.js';
+import { registerErrorHandlers } from './errors.js';
 
 async function buildApp() {
   const cfg = loadConfig();
@@ -21,6 +22,8 @@ async function buildApp() {
 
   await app.register(sensible);
   await app.register(cors, { origin: true });
+
+  await registerErrorHandlers(app);
 
   await registerHealthRoute(app);
   await registerSearchRoute(app);
