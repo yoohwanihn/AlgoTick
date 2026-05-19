@@ -282,7 +282,7 @@ export async function listMarketEvents(daysAhead = 7, market?: string): Promise<
       ...(market ? { market } : {}),
     },
     orderBy: { eventDate: 'asc' },
-    take: 100,
+    take: 500,
   });
   return events.map((e) => ({
     id: e.id,
