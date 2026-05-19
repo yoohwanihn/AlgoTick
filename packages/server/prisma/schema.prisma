@@ -1,0 +1,99 @@
+// AlgoTick Prisma Schema - Stage 1
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Market {
+  US
+  KR
+}
+
+enum Exchange {
+  NASDAQ
+  NYSE
+  KOSPI
+  KOSDAQ
+}
+
+model Ticker {
+  symbol     String   @id
+  market     Market
+  exchange   Exchange
+  nameEn     String?
+  nameKo     String?
+  sector     String?
+  industry   String?
+  currency   String
+  listedAt   DateTime?
+  delistedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  quotesIntraday QuoteIntraday[]
+  quotesDaily    QuoteDaily[]
+
+  @@index([market])
+  @@index([exchange])
+  @@map("tickers")
+}
+
+model QuoteIntraday {
+  symbol     String
+  ts         DateTime
+  price      Decimal  @db.Decimal(20, 6)
+  volume     BigInt
+  changePct  Decimal  @db.Decimal(10, 4)
+  source     String
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@id([symbol, ts])
+  @@index([ts])
+  @@map("quotes_intraday")
+}
+
+model QuoteDaily {
+  symbol    String
+  date      DateTime @db.Date
+  open      Decimal  @db.Decimal(20, 6)
+  high      Decimal  @db.Decimal(20, 6)
+  low       Decimal  @db.Decimal(20, 6)
+  close     Decimal  @db.Decimal(20, 6)
+  adjClose  Decimal? @db.Decimal(20, 6)
+  volume    BigInt
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@id([symbol, date])
+  @@index([symbol, date(sort: Desc)])
+  @@map("quotes_daily")
+}
+
+model IngestionLog {
+  symbol         String
+  kind           String   // "quote" | "daily" | "financials" | ...
+  lastFetchedAt  DateTime
+
+  @@id([symbol, kind])
+  @@map("ingestion_log")
+}
+
+model ValidationResult {
+  id        String   @id @default(uuid())
+  symbol    String
+  kind      String   // "quote" | "daily" | "financials" | ...
+  ts        DateTime @default(now())
+  severity  String   // "error" | "warning" | "info"
+  code      String   // "MARKET_CAP_MISMATCH" | "OHLC_INVARIANT" | ...
+  message   String
+  details   Json?
+
+  @@index([symbol, ts(sort: Desc)])
+  @@index([severity, ts(sort: Desc)])
+  @@map("validation_results")
+}
