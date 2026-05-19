@@ -34,6 +34,8 @@ export const handlers = [
   http.post(`${BASE}/api/screener/rules`, () => HttpResponse.json({ ok: true, id: 'mock-rule' })),
   http.delete(`${BASE}/api/screener/rules/:id`, () => HttpResponse.json({ ok: true })),
 
+  http.get(`${BASE}/api/compare`, () => HttpResponse.json({ items: [], missingSymbols: [] })),
+
   http.get(`${BASE}/api/ticker/:symbol`, ({ params }) => {
     const symbol = params.symbol as string;
     if (symbol === '__NOPE__') {
