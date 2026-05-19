@@ -31,6 +31,21 @@ vi.mock('undici', () => ({
     if (url.includes('m.stock.naver.com/api/stock/UNKNOWN/integration')) {
       return { statusCode: 200, body: { json: async () => ({ stockName: 'unknown', dealTrendInfos: [] }) } };
     }
+    if (url.includes('m.stock.naver.com/api/news/stock/005930')) {
+      return {
+        statusCode: 200,
+        body: { json: async () => [{
+          total: 2,
+          items: [
+            { id: 'x1', officeId: '003', articleId: '0013955280', officeName: '뉴시스', datetime: '202605200003', title: '삼성전자 노사 협상', body: '본문' },
+            { id: 'x2', officeId: '009', articleId: '0005000001', officeName: '매일경제', datetime: '202605191230', title: '반도체 시황', body: '본문2' },
+          ],
+        }] },
+      };
+    }
+    if (url.includes('m.stock.naver.com/api/news/stock/EMPTY')) {
+      return { statusCode: 200, body: { json: async () => [{ total: 0, items: [] }] } };
+    }
     if (url.includes('siseJson.naver')) {
       const text = "[['날짜', '시가', '고가', '저가', '종가', '거래량', '외국인소진율'],\n" +
         '["20240502", 77600, 78600, 77300, 78000, 18900640, 55.88],\n' +
@@ -97,5 +112,21 @@ describe('KrNaverAdapter', () => {
   it('search returns empty (DB seed handles KR search)', async () => {
     const results = await adapter.search('삼성');
     expect(results).toEqual([]);
+  });
+});
+
+describe('KrNaverAdapter.getNews', () => {
+  const adapter = new KrNaverAdapter();
+  it('returns mapped news items with naver article URL', async () => {
+    const news = await adapter.getNews('005930.KS', 10);
+    expect(news.length).toBe(2);
+    expect(news[0]?.title).toBe('삼성전자 노사 협상');
+    expect(news[0]?.url).toBe('https://n.news.naver.com/article/003/0013955280');
+    expect(news[0]?.externalId).toBe('naver-003-0013955280');
+    expect(news[0]?.source).toBe('뉴시스');
+  });
+  it('returns empty for empty response', async () => {
+    const news = await adapter.getNews('EMPTY.KS');
+    expect(news).toEqual([]);
   });
 });

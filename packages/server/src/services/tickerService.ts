@@ -4,6 +4,15 @@ import type { CachedResponse, ValidationResult, Market } from '@algotick/shared'
 import { validateQuote, validateCandle, hasErrors, pickWarnings } from '../validators/index.js';
 import { sma, rsi, macd, bollinger, detectSignals, type Signal, type CandleForSignals } from '../indicators/index.js';
 
+export interface NewsItemResponse {
+  id: string;
+  title: string;
+  source?: string;
+  url: string;
+  summary?: string;
+  publishedAt: string;
+}
+
 export interface FinancialPeriodResponse {
   period: string;
   periodType: 'A' | 'Q';
@@ -49,6 +58,7 @@ export interface TickerDetail {
   indicators: IndicatorSeries;
   signals: Signal[];
   financials: FinancialPeriodResponse[];
+  news: NewsItemResponse[];
 }
 
 const STALE_QUOTE_MS = 60 * 1000;
@@ -192,6 +202,27 @@ async function refreshTicker(
     } catch (_e) { /* non-fatal */ }
   }
 
+  // News — best-effort, non-fatal
+  try {
+    const news = await adapter.getNews(symbol, 20);
+    for (const n of news) {
+      await prisma.news.upsert({
+        where: { symbol_externalId: { symbol, externalId: n.externalId } },
+        update: { title: n.title, source: n.source, url: n.url, summary: n.summary, publishedAt: n.publishedAt },
+        create: {
+          symbol, scope: 'ticker', externalId: n.externalId,
+          title: n.title, source: n.source, url: n.url, summary: n.summary, publishedAt: n.publishedAt,
+          market: market,
+        },
+      });
+    }
+    await prisma.ingestionLog.upsert({
+      where: { symbol_kind: { symbol, kind: 'news' } },
+      update: { lastFetchedAt: new Date() },
+      create: { symbol, kind: 'news', lastFetchedAt: new Date() },
+    });
+  } catch (_e) { /* non-fatal */ }
+
   return collectedWarnings;
 }
 
@@ -268,6 +299,20 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     data: f.data as Record<string, number | null>,
   }));
 
+  const newsRows = await prisma.news.findMany({
+    where: { symbol, scope: 'ticker' },
+    orderBy: { publishedAt: 'desc' },
+    take: 30,
+  });
+  const news: NewsItemResponse[] = newsRows.map((n) => ({
+    id: n.id,
+    title: n.title,
+    source: n.source ?? undefined,
+    url: n.url,
+    summary: n.summary ?? undefined,
+    publishedAt: n.publishedAt.toISOString(),
+  }));
+
   return {
     symbol,
     quote: latest
@@ -282,5 +327,6 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     indicators,
     signals,
     financials,
+    news,
   };
 }
