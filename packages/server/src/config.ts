@@ -13,6 +13,7 @@ const ConfigSchema = z.object({
   FINNHUB_API_KEY: z.string().optional(),
   POLLING_INTERVAL_MS: z.coerce.number().int().positive().default(60000),
   WARM_UP_ON_START: z.coerce.boolean().default(true),
+  WATCHLIST_SYMBOLS: z.string().optional(),
   YAHOO_CONCURRENCY: z.coerce.number().int().positive().default(2),
   NAVER_CONCURRENCY: z.coerce.number().int().positive().default(3),
   SEC_CONCURRENCY: z.coerce.number().int().positive().default(1),
@@ -28,6 +29,7 @@ export type AppConfig = {
   finnhubApiKey?: string;
   pollingIntervalMs: number;
   warmUpOnStart: boolean;
+  watchlistSymbols?: string;
   yahooConcurrency: number;
   naverConcurrency: number;
   secConcurrency: number;
@@ -45,6 +47,7 @@ export function loadConfig(): AppConfig {
     finnhubApiKey: parsed.FINNHUB_API_KEY,
     pollingIntervalMs: parsed.POLLING_INTERVAL_MS,
     warmUpOnStart: parsed.WARM_UP_ON_START,
+    watchlistSymbols: parsed.WATCHLIST_SYMBOLS,
     yahooConcurrency: parsed.YAHOO_CONCURRENCY,
     naverConcurrency: parsed.NAVER_CONCURRENCY,
     secConcurrency: parsed.SEC_CONCURRENCY,

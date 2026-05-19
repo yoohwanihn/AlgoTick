@@ -8,6 +8,8 @@ import { registerHealthRoute } from './api/health.js';
 import { registerSearchRoute } from './api/search.js';
 import { registerTickerRoute } from './api/ticker.js';
 import { registerErrorHandlers } from './errors.js';
+import { registerSseRoutes } from './sse/routes.js';
+import { startWorker, stopWorker } from './worker/index.js';
 
 async function buildApp() {
   const cfg = loadConfig();
@@ -28,6 +30,7 @@ async function buildApp() {
   await registerHealthRoute(app);
   await registerSearchRoute(app);
   await registerTickerRoute(app);
+  await registerSseRoutes(app);
 
   return app;
 }
@@ -38,6 +41,7 @@ async function start() {
 
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');
+    stopWorker();
     await app.close();
     await disconnectPrisma();
     process.exit(0);
@@ -48,6 +52,7 @@ async function start() {
   try {
     await app.listen({ port: cfg.port, host: '0.0.0.0' });
     app.log.info(`AlgoTick server listening on port ${cfg.port}`);
+    await startWorker();
   } catch (err) {
     app.log.error(err);
     process.exit(1);
