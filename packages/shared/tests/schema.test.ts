@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  TickerSchema, QuoteSchema, ProvenanceSchema,
+  TickerSchema, QuoteSchema, CandleSchema, ProvenanceSchema,
   ValidationResultSchema, ConfidenceSchema, SourceSchema,
 } from '../src';
 
@@ -45,6 +45,38 @@ describe('QuoteSchema', () => {
       source: 'yahoo',
     });
     expect(parsed.price).toBe(234.52);
+  });
+});
+
+describe('QuoteSchema (safety extensions)', () => {
+  it('rejects negative price', () => {
+    expect(() => QuoteSchema.parse({
+      symbol: 'AAPL', ts: '2026-05-19T15:00:00Z',
+      price: -1, volume: 100, changePct: 0, source: 'yahoo',
+    })).toThrow();
+  });
+
+  it('rejects empty symbol', () => {
+    expect(() => QuoteSchema.parse({
+      symbol: '', ts: '2026-05-19T15:00:00Z',
+      price: 100, volume: 100, changePct: 0, source: 'yahoo',
+    })).toThrow();
+  });
+
+  it('accepts zero price (halted market)', () => {
+    expect(() => QuoteSchema.parse({
+      symbol: 'AAPL', ts: '2026-05-19T15:00:00Z',
+      price: 0, volume: 0, changePct: 0, source: 'yahoo',
+    })).not.toThrow();
+  });
+});
+
+describe('CandleSchema (safety extensions)', () => {
+  it('rejects negative OHLC', () => {
+    expect(() => CandleSchema.parse({
+      symbol: 'AAPL', date: '2026-05-19',
+      open: -1, high: 1, low: 0, close: 0, volume: 0,
+    })).toThrow();
   });
 });
 
