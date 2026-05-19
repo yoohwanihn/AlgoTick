@@ -5,6 +5,7 @@ import { TickerSummary } from '../components/ticker/TickerSummary.js';
 import { TickerTabs } from '../components/ticker/TickerTabs.js';
 import { WarningBadge } from '../components/ui/WarningBadge.js';
 import { SignalPanel } from '../components/ticker/SignalPanel.js';
+import { WatchlistButton } from '../components/ticker/WatchlistButton.js';
 
 export function TickerDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -24,7 +25,10 @@ export function TickerDetailPage() {
     <div className="py-4">
       <div className="flex items-start justify-between mb-2">
         <TickerHeader res={data} />
-        <WarningBadge warnings={data.warnings ?? []} />
+        <div className="flex items-center gap-2">
+          <WatchlistButton symbol={data.data.symbol} />
+          <WarningBadge warnings={data.warnings ?? []} />
+        </div>
       </div>
       <TickerSummary res={data} />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
