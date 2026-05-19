@@ -6,7 +6,11 @@ import { validateQuote, hasErrors, pickWarnings } from '../../validators/index.j
 export async function pollActive(): Promise<{ symbols: string[]; updated: number }> {
   const envList = (process.env.WATCHLIST_SYMBOLS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   const sseSubs = Array.from(activeSymbols());
-  const targets = Array.from(new Set([...envList, ...sseSubs]));
+  const watchlistRows = await getPrisma().watchlist.findMany({ select: { symbol: true } });
+  const dbList = watchlistRows.map((r) => r.symbol);
+  const lotRows = await getPrisma().portfolioLot.findMany({ select: { symbol: true }, distinct: ['symbol'] });
+  const lotList = lotRows.map((r) => r.symbol);
+  const targets = Array.from(new Set([...envList, ...dbList, ...lotList, ...sseSubs]));
   if (targets.length === 0) return { symbols: [], updated: 0 };
 
   const prisma = getPrisma();

@@ -4,6 +4,9 @@ import { NotFoundPage } from './routes/NotFoundPage.js';
 import { SearchPage } from './routes/SearchPage.js';
 import { TickerDetailPage } from './routes/TickerDetailPage.js';
 import { DashboardPage } from './routes/DashboardPage.js';
+import { PortfolioPage } from './routes/PortfolioPage.js';
+import { ScreenerPage } from './routes/ScreenerPage.js';
+import { ComparePage } from './routes/ComparePage.js';
 
 export function App() {
   return (
@@ -13,6 +16,9 @@ export function App() {
           <Route index element={<DashboardPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/ticker/:symbol" element={<TickerDetailPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/screener" element={<ScreenerPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

@@ -19,6 +19,23 @@ export const handlers = [
     return HttpResponse.json({ results });
   }),
 
+  http.get(`${BASE}/api/watchlist`, () => HttpResponse.json({ items: [] })),
+  http.get(`${BASE}/api/watchlist/has/:symbol`, () => HttpResponse.json({ exists: false })),
+  http.post(`${BASE}/api/watchlist`, () => HttpResponse.json({ ok: true, item: { symbol: 'MOCK', position: 1, addedAt: new Date().toISOString() } })),
+  http.delete(`${BASE}/api/watchlist/:symbol`, () => HttpResponse.json({ ok: true })),
+
+  http.get(`${BASE}/api/portfolio`, () => HttpResponse.json({ totalCostBasis: 0, totalMarketValue: 0, totalUnrealizedPnl: 0, totalUnrealizedPnlPct: 0, positions: [] })),
+  http.get(`${BASE}/api/portfolio/lots`, () => HttpResponse.json({ lots: [] })),
+  http.post(`${BASE}/api/portfolio/lots`, () => HttpResponse.json({ ok: true, id: 'mock-lot-id' })),
+  http.delete(`${BASE}/api/portfolio/lots/:id`, () => HttpResponse.json({ ok: true })),
+
+  http.post(`${BASE}/api/screener/run`, () => HttpResponse.json({ hits: [], total: 0 })),
+  http.get(`${BASE}/api/screener/rules`, () => HttpResponse.json({ rules: [] })),
+  http.post(`${BASE}/api/screener/rules`, () => HttpResponse.json({ ok: true, id: 'mock-rule' })),
+  http.delete(`${BASE}/api/screener/rules/:id`, () => HttpResponse.json({ ok: true })),
+
+  http.get(`${BASE}/api/compare`, () => HttpResponse.json({ items: [], missingSymbols: [] })),
+
   http.get(`${BASE}/api/ticker/:symbol`, ({ params }) => {
     const symbol = params.symbol as string;
     if (symbol === '__NOPE__') {
