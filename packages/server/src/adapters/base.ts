@@ -38,12 +38,22 @@ export interface FinancialPeriod {
   data: Record<string, number | null>;  // revenue, op_income, net_income, roe, per, pbr, eps, bps, debtRatio, ...
 }
 
+export interface NewsItem {
+  externalId: string;     // adapter-side stable id for upsert
+  title: string;
+  source?: string;
+  url: string;
+  summary?: string;
+  publishedAt: Date;
+}
+
 export interface MarketAdapter {
   readonly market: Market;
   getQuote(symbol: string): Promise<QuoteResult>;
   getDailyOHLCV(symbol: string, from: Date, to: Date): Promise<CandleResult[]>;
   search(query: string, limit?: number): Promise<SearchResult[]>;
   getFinancials(symbol: string): Promise<FinancialPeriod[]>;  // NEW
+  getNews(symbol: string, limit?: number): Promise<NewsItem[]>;
 }
 
 export class AdapterError extends Error {

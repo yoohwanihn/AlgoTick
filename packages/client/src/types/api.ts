@@ -53,6 +53,15 @@ export interface FinancialPeriod {
   data: Record<string, number | null>;
 }
 
+export interface NewsItem {
+  id: string;
+  title: string;
+  source?: string;
+  url: string;
+  summary?: string;
+  publishedAt: string;
+}
+
 export interface TickerDetailData {
   symbol: string;
   market: string;
@@ -64,6 +73,7 @@ export interface TickerDetailData {
   indicators: IndicatorSeries;
   signals: Signal[];
   financials: FinancialPeriod[];
+  news: NewsItem[];
 }
 
 export interface TickerDetailResponse {
