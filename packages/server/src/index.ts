@@ -9,6 +9,7 @@ import { registerSearchRoute } from './api/search.js';
 import { registerTickerRoute } from './api/ticker.js';
 import { registerWatchlistRoutes } from './api/watchlist.js';
 import { registerPortfolioRoutes } from './api/portfolio.js';
+import { registerScreenerRoutes } from './api/screener.js';
 import { registerErrorHandlers } from './errors.js';
 import { registerSseRoutes } from './sse/routes.js';
 import { startWorker, stopWorker } from './worker/index.js';
@@ -34,6 +35,7 @@ async function buildApp() {
   await registerTickerRoute(app);
   await registerWatchlistRoutes(app);
   await registerPortfolioRoutes(app);
+  await registerScreenerRoutes(app);
   await registerSseRoutes(app);
 
   return app;

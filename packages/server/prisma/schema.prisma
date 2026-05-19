@@ -199,3 +199,14 @@ model ValidationResult {
   @@index([severity, ts(sort: Desc)])
   @@map("validation_results")
 }
+
+model ScreenerRule {
+  id         String   @id @default(uuid())
+  name       String
+  conditions Json     // [{field, op, value}, ...]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@map("screener_rules")
+}
