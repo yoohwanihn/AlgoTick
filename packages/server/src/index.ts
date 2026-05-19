@@ -5,6 +5,7 @@ import sensible from '@fastify/sensible';
 import { loadConfig } from './config.js';
 import { getPrisma, disconnectPrisma } from './db.js';
 import { registerHealthRoute } from './api/health.js';
+import { registerSearchRoute } from './api/search.js';
 
 async function buildApp() {
   const cfg = loadConfig();
@@ -21,6 +22,7 @@ async function buildApp() {
   await app.register(cors, { origin: true });
 
   await registerHealthRoute(app);
+  await registerSearchRoute(app);
 
   return app;
 }
