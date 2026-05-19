@@ -1,0 +1,11 @@
+{
+  "name": "@algotick/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'client implemented in Stage 2'",
+    "build": "echo 'client implemented in Stage 2'",
+    "test": "echo 'client implemented in Stage 2'"
+  }
+}

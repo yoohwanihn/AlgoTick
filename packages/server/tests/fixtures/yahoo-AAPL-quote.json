@@ -1,0 +1,12 @@
+{
+  "symbol": "AAPL",
+  "regularMarketPrice": 234.52,
+  "regularMarketVolume": 50000000,
+  "regularMarketChangePercent": 1.24,
+  "regularMarketTime": "2026-05-19T19:30:00.000Z",
+  "longName": "Apple Inc.",
+  "exchange": "NMS",
+  "currency": "USD",
+  "marketCap": 3601555560000,
+  "sharesOutstanding": 15357000000
+}

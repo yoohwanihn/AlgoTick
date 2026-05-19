@@ -46,6 +46,9 @@ coverage/
 # Brainstorming (visual companion 임시 데이터)
 .superpowers/
 
+# Docs (작업 메모 / 사용자 요청)
+docs/
+
 # Prisma
 packages/server/prisma/*.db
 
