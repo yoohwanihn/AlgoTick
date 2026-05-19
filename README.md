@@ -11,6 +11,7 @@
 
 - 🔍 **검색** — 미국(NASDAQ/NYSE) + 한국(KOSPI/KOSDAQ) 통합
 - 📊 **종목 상세 (5탭)** — 차트 · 가치평가 · 기관/내부자 · 뉴스 · 개요
+- 🌐 **시황 분석** — 주요 지수(S&P500/NASDAQ/KOSPI/VIX 등) · 섹터 히트맵 · 등락 TOP 10 · 거래량 급증 · 시장 캘린더(실적/FOMC)
 - 🧮 **차트 자동 분석** — 이평선(5/20/60/120), RSI, MACD, 볼린저밴드 + 룰 기반 신호(골든크로스/데드크로스/스퀴즈 등)
 - ⭐ **관심종목** — 1분 주기로 백그라운드 갱신
 - 💼 **포트폴리오 추적** — 매수/매도 기록 → 손익/수익률 자동 계산
@@ -143,6 +144,8 @@ algotick/
 | `portfolio_lots` | 포트폴리오 매수/매도 기록 |
 | `screener_rules` | 스크리너 조건 저장 |
 | `ingestion_log` | 페치 시각 추적 (stale 판정) |
+| `indices` / `index_quotes_intraday` / `index_quotes_daily` | 시장 지수 (S&P500, KOSPI, VIX 등) |
+| `market_events` | 시장 캘린더 (실적 발표, FOMC, CPI 등) |
 
 > 이평선은 별도 저장 없이 `quotes_daily.close`에서 윈도우 함수로 즉석 계산.
 > 상세 스키마는 [디자인 스펙 §3](docs/superpowers/specs/2026-05-19-algotick-design.md#3-데이터-모델-postgresql) 참고.

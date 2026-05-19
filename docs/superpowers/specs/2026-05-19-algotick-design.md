@@ -23,7 +23,7 @@
 | 데이터 소스 | 무료 API 조합 (Yahoo Finance, 네이버 금융, SEC EDGAR, DART OpenAPI) |
 | 데이터 신선도 | 1분 주기 폴링 + 온디맨드 페치 |
 | 분석 영역 (MVP) | ① 기업 가치평가 ② 기관/내부자 거래 ③ 기술 지표 + 차트 ④ 뉴스 리스트 |
-| 부가 기능 | 관심종목, 포트폴리오 추적, 종목 비교(2~3개), 스크리닝 |
+| 부가 기능 | 관심종목, 포트폴리오 추적, 종목 비교(2~3개), 스크리닝, **시황 분석** |
 | 차트 자동 분석 | 룰 기반 신호 감지 + 한 줄 해설 + 차트 마커 (LLM 미사용) |
 | 테마 | 다크/라이트 토글 |
 | 서버 운영 | 사용 시에만 가동 |
@@ -175,8 +175,44 @@ interface MarketAdapter {
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id (PK) | uuid | |
-| symbol, published_at | text, timestamptz | |
+| symbol, published_at | text, timestamptz | symbol NULL 가능 (시장 전반 뉴스) |
+| scope | text | "ticker" / "market" |
+| market | text | NULL/"US"/"KR" |
 | title, source, url | text | |
+
+**`indices`** — 시장 지수 마스터 (S&P500, NASDAQ, KOSPI 등)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| code (PK) | text | "^GSPC", "^IXIC", "^KS11", "^KQ11", "^VIX" |
+| name | text | "S&P 500", "KOSPI" |
+| market | text | "US" / "KR" / "GLOBAL" |
+| kind | text | "index" / "volatility" / "fx" |
+
+**`index_quotes_intraday`** — 지수 분봉 (30일)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| (code, ts) (PK) | text, timestamptz | |
+| value | numeric | |
+| change_pct | numeric | |
+
+**`index_quotes_daily`** — 지수 일봉 (영구)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| (code, date) (PK) | text, date | |
+| open, high, low, close | numeric | |
+
+**`market_events`** — 시장 캘린더 (실적/매크로)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id (PK) | uuid | |
+| event_date | date | |
+| market | text | "US" / "KR" / "GLOBAL" |
+| kind | text | "earnings" / "fomc" / "cpi" / "pce" / "boe" / "옵션만기" 등 |
+| symbol | text | NULL 가능 (실적인 경우 종목, 매크로는 NULL) |
+| title | text | "Apple Q2 실적 발표" |
+| meta | jsonb | 시장 컨센서스/실제치 등 |
+
+> 등락률 상위/하위, 거래량 급증, 섹터 등락은 별도 테이블 없이 `quotes_daily` + `quotes_intraday` + `tickers.sector`로 SQL 쿼리에서 즉석 집계.
 
 #### 그룹 ④ — 사용자 데이터
 - **`watchlist`**: symbol(PK), added_at, memo
@@ -196,7 +232,10 @@ interface MarketAdapter {
 - `quotes_daily`: BTREE on (symbol, date DESC)
 - `financials`: BTREE on (symbol, period DESC)
 - `insider_trades`: BTREE on (symbol, trade_date DESC)
-- `news_items`: BTREE on (symbol, published_at DESC)
+- `news_items`: BTREE on (symbol, published_at DESC), BTREE on (scope, market, published_at DESC) — 시장 뉴스 조회용
+- `index_quotes_intraday`: BRIN on (ts)
+- `index_quotes_daily`: BTREE on (code, date DESC)
+- `market_events`: BTREE on (event_date, market) — 캘린더 조회용
 
 ---
 
@@ -206,6 +245,7 @@ interface MarketAdapter {
 | 경로 | 설명 |
 |---|---|
 | `/` | 대시보드 — 관심종목 미니카드 그리드 |
+| `/market` | **시황 분석** — 시장 전반 현황 (지수/섹터/등락상위/캘린더) |
 | `/search?q=...` | 검색 결과 |
 | `/ticker/:symbol` | 종목 상세 (5탭) |
 | `/portfolio` | 포트폴리오 — 수익률/손익/배분 |
@@ -247,6 +287,55 @@ LLM 없이 신호별 템플릿 문자열로 한 줄 해설 + 차트 시점 마�
 
 > 신호 룰은 `packages/server/src/indicators/signals.ts`에 단일 모듈로. 향후 확장 시 룰만 추가.
 
+### 4.4 시황 분석 페이지 (`/market`)
+
+종목 단위가 아닌 **시장 전체 현황**을 한 페이지에서. 미국·한국 시장 토글 가능.
+
+#### 상단 헤더
+- 시장 선택 토글: 🇺🇸 미국 / 🇰🇷 한국 / 글로벌(둘 다)
+- 장 상태 배지: "🟢 정규장 진행중" / "🟡 시간외" / "🔴 휴장"
+- 마지막 갱신 시각
+
+#### 섹션 구성
+
+1. **주요 지수 카드** — 한 줄에 4~6개
+   - 미국: S&P 500, NASDAQ Composite, Dow Jones, Russell 2000, **VIX**(공포 지수)
+   - 한국: KOSPI, KOSDAQ, **V-KOSPI**(변동성 지수), USD/KRW
+   - 각 카드: 현재값, 등락률, 미니 스파크라인(당일 분봉)
+
+2. **섹터 히트맵** — 11개 GICS 섹터 (또는 한국 업종)
+   - 색상: 등락률 (-3% 빨강 ~ 0% 회색 ~ +3% 초록)
+   - 면적: 시가총액 비중
+   - 클릭 시 해당 섹터 종목 리스트로
+
+3. **등락률 상위/하위 TOP 10** — 두 열로
+   - 좌: 상승률 TOP 10 (오늘)
+   - 우: 하락률 TOP 10
+   - 각 행: 종목명/티커, 등락률, 거래량, 마지막 가격
+
+4. **거래량 급증 종목** — TOP 10
+   - 20일 평균 거래량 대비 배수 큰 순
+   - 가격 급변동 종목 발견용
+
+5. **시장 분위기 지표**
+   - Fear & Greed (CNN 데이터 / 옵션)
+   - 시장 폭(advance/decline)
+   - 신고가/신저가 종목 수
+   - 52주 신고가 대비 위치
+
+6. **시장 캘린더** — 향후 7일
+   - 실적 발표 일정 (관심종목 우선 표시)
+   - 미국: FOMC, CPI, PCE, 고용지표 등 매크로
+   - 한국: 금통위, 옵션만기일 등
+
+7. **주요 시장 뉴스** — 종목 단위가 아닌 시장 전반 (RSS)
+
+#### 데이터 갱신
+- 지수/섹터: 1분 폴링 (워커 추가 잡)
+- 시장 캘린더: 일 1회 갱신
+- 시장 뉴스: 30분
+- 페이지 진입 시 SSE 구독 → 지수/등락 상위 실시간 푸시
+
 ---
 
 ## 5. 데이터 흐름 (인제스천 & 실시간)
@@ -258,9 +347,11 @@ LLM 없이 신호별 템플릿 문자열로 한 줄 해설 + 차트 시점 마�
 2. Prisma DB 연결
 3. 워커가 관심종목 + 포트폴리오 종목 symbol 리스트 조회
 4. 각 symbol에 대해 Adapter들을 병렬로 호출(rate-limit 적용) — 시세, 재무, 공시
-5. 결과를 UPSERT, `ingestion_log` 업데이트
-6. node-cron 시작 (1분 간격)
-7. Fastify 리스닝 시작
+5. **시장 지수**(S&P500/NASDAQ/Dow/VIX/KOSPI/KOSDAQ/V-KOSPI/USD-KRW) 시세 갱신
+6. **시장 캘린더**(향후 7일치 실적/매크로 일정) — 마지막 갱신 1일 경과 시
+7. 결과를 UPSERT, `ingestion_log` 업데이트
+8. node-cron 시작 (1분 간격)
+9. Fastify 리스닝 시작
 
 #### Phase 2: 종목 상세 진입 (사용자 액션)
 1. 프론트: `GET /api/ticker/AAPL`
@@ -270,9 +361,9 @@ LLM 없이 신호별 템플릿 문자열로 한 줄 해설 + 차트 시점 마�
 5. **캐시 miss (처음 본 종목)** → 동기 페치 (프론트는 스피너 표시) → DB 저장 + `ingestion_log` 갱신 → 응답
 
 #### Phase 3: 1분 주기 폴링 (워커 tick)
-1. 대상: 관심종목 + 포트폴리오 종목 + 현재 SSE 구독 중인 종목
+1. 대상: 관심종목 + 포트폴리오 종목 + 현재 SSE 구독 중인 종목 + **주요 시장 지수** (항상)
 2. 각 Adapter 병렬 호출
-3. 변동 있는 항목만 SSE 푸시 (`quote-tick` 이벤트)
+3. 변동 있는 항목만 SSE 푸시 (`quote-tick` / `index-tick` 이벤트)
 
 #### Phase 4: 서버 종료
 1. node-cron 정지
@@ -298,8 +389,12 @@ LLM 없이 신호별 템플릿 문자열로 한 줄 해설 + 차트 시점 마�
 | 일봉 OHLCV | 장 마감 후 1회 + 마지막 갱신 6시간 경과 (둘 중 빠른 쪽) |
 | 재무제표 | 7일 |
 | 내부자/기관 거래 | 1일 |
-| 뉴스 RSS | 30분 |
+| 뉴스 RSS (종목) | 30분 |
+| 뉴스 RSS (시장 전반) | 30분 |
 | 상장 마스터 | 7일 |
+| 지수 (intraday) | 60초 |
+| 지수 (daily) | 장 마감 후 1회 + 6시간 |
+| 시장 캘린더 (실적/매크로) | 1일 |
 
 ### 5.4 Rate Limit & 회복력
 - 각 Adapter는 `p-limit`으로 동시 호출 수 제한 (.env로 조절)
@@ -346,6 +441,7 @@ algotick/
     │   │   ├── api/                # 라우트
     │   │   │   ├── search.ts
     │   │   │   ├── ticker.ts
+    │   │   │   ├── market.ts       # 시황 (지수/섹터/캘린더)
     │   │   │   ├── watchlist.ts
     │   │   │   ├── portfolio.ts
     │   │   │   ├── screener.ts
@@ -372,6 +468,7 @@ algotick/
         │   ├── components/         # 공통 UI
         │   ├── features/           # 도메인별
         │   │   ├── ticker/
+        │   │   ├── market/         # 시황 분석 페이지
         │   │   ├── watchlist/
         │   │   ├── portfolio/
         │   │   ├── screener/
