@@ -43,6 +43,7 @@ export const handlers = [
           bollingerMiddle: [null, null], bollingerUpper: [null, null], bollingerLower: [null, null],
         },
         signals: [],
+        financials: [],
       },
       freshness: 'fresh',
       lastFetchedAt: new Date().toISOString(),

@@ -1,9 +1,10 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod } from './base.js';
 import { AdapterError } from './base.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
 const INTEG_URL = (code: string) => `https://m.stock.naver.com/api/stock/${encodeURIComponent(code)}/integration`;
+const FINANCE_ANNUAL_URL = (code: string) => `https://m.stock.naver.com/api/stock/${encodeURIComponent(code)}/finance/annual`;
 const SISE_URL = (code: string, from: string, to: string) =>
   `https://api.finance.naver.com/siseJson.naver?symbol=${encodeURIComponent(code)}&requestType=1&startTime=${from}&endTime=${to}&timeframe=day`;
 
@@ -61,6 +62,42 @@ interface NaverDealTrend {
   compareToPreviousClosePrice: string;
   accumulatedTradingVolume: string;
 }
+const NAVER_FIELD_MAP: Record<string, string> = {
+  '매출액': 'revenue',
+  '영업이익': 'opIncome',
+  '당기순이익': 'netIncome',
+  '지배주주순이익': 'netIncomeAttributableToOwners',
+  '영업이익률': 'operatingMarginPct',
+  '순이익률': 'netMarginPct',
+  'ROE': 'roePct',
+  '부채비율': 'debtRatioPct',
+  '당좌비율': 'quickRatioPct',
+  '유보율': 'retainedEarningsRatioPct',
+  'EPS': 'eps',
+  'PER': 'per',
+  'BPS': 'bps',
+  'PBR': 'pbr',
+  '현금DPS': 'cashDps',
+  '현금배당수익률': 'dividendYieldPct',
+  '현금배당성향': 'dividendPayoutPct',
+};
+
+interface NaverFinanceCell { value?: string; cx?: unknown; }
+interface NaverFinanceRow { title: string; columns: Record<string, NaverFinanceCell> }
+interface NaverFinanceTrTitle { isConsensus?: 'Y' | 'N'; title?: string; key: string }
+interface NaverFinanceResponse {
+  financeInfo?: { rowList?: NaverFinanceRow[]; trTitleList?: NaverFinanceTrTitle[]; };
+}
+
+function parsePeriodToDate(key: string): Date {
+  // "202312" → 2023-12-31
+  if (key.length !== 6) return new Date();
+  const y = Number(key.slice(0, 4));
+  const m = Number(key.slice(4, 6));
+  // Treat as end-of-month (last day of given month)
+  return new Date(Date.UTC(y, m, 0, 23, 59, 59));
+}
+
 interface NaverIntegrationResponse {
   stockName?: string;
   totalInfos?: NaverTotalInfo[];
@@ -151,5 +188,45 @@ export class KrNaverAdapter implements MarketAdapter {
   async search(_query: string, _limit = 10): Promise<SearchResult[]> {
     // KR search는 DB 시드(tickers 테이블)에서 처리. 어댑터 search는 빈 결과.
     return [];
+  }
+
+  async getFinancials(symbol: string): Promise<FinancialPeriod[]> {
+    try {
+      const code = stripKrSuffix(symbol);
+      const body = await fetchJson<NaverFinanceResponse>(FINANCE_ANNUAL_URL(code));
+      const fi = body.financeInfo;
+      if (!fi || !fi.trTitleList || !fi.rowList) return [];
+
+      const trTitleList: NaverFinanceTrTitle[] = fi.trTitleList;
+      const rowList: NaverFinanceRow[] = fi.rowList;
+      const out: FinancialPeriod[] = [];
+      for (const trTitle of trTitleList) {
+        if (!trTitle.key) continue;
+        if (trTitle.isConsensus === 'Y') continue;  // 컨센서스 (예측) 제외
+        const data: Record<string, number | null> = {};
+        for (const finRow of rowList) {
+          const std = NAVER_FIELD_MAP[finRow.title];
+          if (!std) continue;
+          const cell = finRow.columns?.[trTitle.key];
+          if (!cell || cell.value === '-' || cell.value === undefined || cell.value === null) {
+            data[std] = null;
+          } else {
+            const n = parseKrNumber(cell.value);
+            data[std] = Number.isFinite(n) ? n : null;
+          }
+        }
+        out.push({
+          period: trTitle.key,
+          periodType: 'A',
+          asOf: parsePeriodToDate(trTitle.key),
+          source: 'naver',
+          data,
+        });
+      }
+      return out;
+    } catch (e) {
+      if (e instanceof AdapterError) throw e;
+      throw new AdapterError('naver', `getFinancials failed for ${symbol}`, e);
+    }
   }
 }

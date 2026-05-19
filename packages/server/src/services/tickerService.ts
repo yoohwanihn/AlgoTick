@@ -4,6 +4,14 @@ import type { CachedResponse, ValidationResult, Market } from '@algotick/shared'
 import { validateQuote, validateCandle, hasErrors, pickWarnings } from '../validators/index.js';
 import { sma, rsi, macd, bollinger, detectSignals, type Signal, type CandleForSignals } from '../indicators/index.js';
 
+export interface FinancialPeriodResponse {
+  period: string;
+  periodType: 'A' | 'Q';
+  asOf: string;
+  source: string;
+  data: Record<string, number | null>;
+}
+
 export interface IndicatorSeries {
   ma5: Array<number | null>;
   ma20: Array<number | null>;
@@ -40,9 +48,11 @@ export interface TickerDetail {
   }>;
   indicators: IndicatorSeries;
   signals: Signal[];
+  financials: FinancialPeriodResponse[];
 }
 
 const STALE_QUOTE_MS = 60 * 1000;
+const STALE_FINANCIALS_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days
 
 export async function getTickerDetail(
   symbol: string,
@@ -159,6 +169,29 @@ async function refreshTicker(
     }),
   ]);
 
+  // Financials — best-effort, non-fatal
+  const finLog = await prisma.ingestionLog.findUnique({
+    where: { symbol_kind: { symbol, kind: 'financials' } },
+  });
+  const finStale = !finLog || Date.now() - finLog.lastFetchedAt.getTime() > STALE_FINANCIALS_MS;
+  if (finStale) {
+    try {
+      const fins = await adapter.getFinancials(symbol);
+      for (const f of fins) {
+        await prisma.financial.upsert({
+          where: { symbol_period: { symbol, period: f.period } },
+          update: { periodType: f.periodType, asOf: f.asOf, source: f.source, data: f.data as object },
+          create: { symbol, period: f.period, periodType: f.periodType, asOf: f.asOf, source: f.source, data: f.data as object },
+        });
+      }
+      await prisma.ingestionLog.upsert({
+        where: { symbol_kind: { symbol, kind: 'financials' } },
+        update: { lastFetchedAt: new Date() },
+        create: { symbol, kind: 'financials', lastFetchedAt: new Date() },
+      });
+    } catch (_e) { /* non-fatal */ }
+  }
+
   return collectedWarnings;
 }
 
@@ -221,6 +254,20 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     volume: Number(c.volume),
   }));
   const { indicators, signals } = computeIndicators(ascCandles);
+
+  const finRows = await prisma.financial.findMany({
+    where: { symbol },
+    orderBy: { asOf: 'desc' },
+    take: 10,
+  });
+  const financials: FinancialPeriodResponse[] = finRows.reverse().map((f) => ({
+    period: f.period,
+    periodType: f.periodType as 'A' | 'Q',
+    asOf: f.asOf.toISOString(),
+    source: f.source,
+    data: f.data as Record<string, number | null>,
+  }));
+
   return {
     symbol,
     quote: latest
@@ -234,5 +281,6 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     candles: ascCandles,
     indicators,
     signals,
+    financials,
   };
 }

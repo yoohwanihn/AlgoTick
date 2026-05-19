@@ -1,5 +1,5 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod } from './base.js';
 import { AdapterError } from './base.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
@@ -118,6 +118,12 @@ export class UsYahooAdapter implements MarketAdapter {
       if (e instanceof AdapterError) throw e;
       throw new AdapterError('yahoo', `getDailyOHLCV failed for ${symbol}`, e);
     }
+  }
+
+  async getFinancials(_symbol: string): Promise<FinancialPeriod[]> {
+    // Yahoo /v10/quoteSummary requires crumb auth (blocked).
+    // Stage 5b will add Finnhub integration when FINNHUB_API_KEY is configured.
+    return [];
   }
 
   async search(query: string, limit = 10): Promise<SearchResult[]> {

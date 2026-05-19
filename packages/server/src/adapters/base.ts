@@ -30,11 +30,20 @@ export interface SearchResult {
   market: Market;
 }
 
+export interface FinancialPeriod {
+  period: string;          // "202312"
+  periodType: 'A' | 'Q';
+  asOf: Date;              // 분기/연간 마감일
+  source: string;
+  data: Record<string, number | null>;  // revenue, op_income, net_income, roe, per, pbr, eps, bps, debtRatio, ...
+}
+
 export interface MarketAdapter {
   readonly market: Market;
   getQuote(symbol: string): Promise<QuoteResult>;
   getDailyOHLCV(symbol: string, from: Date, to: Date): Promise<CandleResult[]>;
   search(query: string, limit?: number): Promise<SearchResult[]>;
+  getFinancials(symbol: string): Promise<FinancialPeriod[]>;  // NEW
 }
 
 export class AdapterError extends Error {
