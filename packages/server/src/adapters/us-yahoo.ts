@@ -1,5 +1,5 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem } from './base.js';
 import { AdapterError } from './base.js';
 import { loadConfig } from '../config.js';
 
@@ -18,6 +18,23 @@ function pickNumber(m: Record<string, number | string | null>, key: string): num
   if (typeof v !== 'number' || !Number.isFinite(v)) return null;
   return v;
 }
+const FINNHUB_NEWS_URL = (symbol: string, fromDate: string, toDate: string, key: string) =>
+  `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${fromDate}&to=${toDate}&token=${encodeURIComponent(key)}`;
+
+interface FinnhubNewsRaw {
+  id?: number;
+  datetime?: number;  // unix epoch seconds
+  headline?: string;
+  source?: string;
+  url?: string;
+  summary?: string;
+}
+
+function ymdFromOffset(daysAgo: number): string {
+  const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
 const CHART_URL = (s: string, from: number, to: number) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?period1=${from}&period2=${to}&interval=1d&includePrePost=false`;
 const QUOTE_CHART_URL = (s: string) =>
@@ -177,6 +194,30 @@ export class UsYahooAdapter implements MarketAdapter {
       }];
     } catch (_e) {
       return [];  // Non-fatal: return empty if Finnhub is unreachable or returns invalid
+    }
+  }
+
+  async getNews(symbol: string, limit = 20): Promise<NewsItem[]> {
+    const cfg = loadConfig();
+    if (!cfg.finnhubApiKey || cfg.finnhubApiKey.length === 0) return [];
+    try {
+      const to = ymdFromOffset(0);
+      const from = ymdFromOffset(7);
+      const body = await fetchJson<FinnhubNewsRaw[]>(FINNHUB_NEWS_URL(symbol, from, to, cfg.finnhubApiKey), 'finnhub');
+      if (!Array.isArray(body)) return [];
+      return body
+        .filter((n) => typeof n.headline === 'string' && n.headline.length > 0 && typeof n.url === 'string')
+        .slice(0, limit)
+        .map((n): NewsItem => ({
+          externalId: `finnhub-${n.id ?? n.url ?? n.headline ?? ''}`,
+          title: n.headline as string,
+          source: n.source,
+          url: n.url as string,
+          summary: n.summary && n.summary.length > 0 ? n.summary : undefined,
+          publishedAt: n.datetime ? new Date(n.datetime * 1000) : new Date(),
+        }));
+    } catch (_e) {
+      return [];
     }
   }
 

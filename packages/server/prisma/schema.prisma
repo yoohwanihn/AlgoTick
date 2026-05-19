@@ -37,6 +37,7 @@ model Ticker {
   quotesIntraday QuoteIntraday[]
   quotesDaily    QuoteDaily[]
   financials     Financial[]
+  news           News[]
 
   @@index([market])
   @@index([exchange])
@@ -99,6 +100,27 @@ model Financial {
   @@id([symbol, period])
   @@index([symbol, asOf(sort: Desc)])
   @@map("financials")
+}
+
+model News {
+  id           String   @id @default(uuid())
+  symbol       String?
+  scope        String   // "ticker" | "market"
+  market       String?  // "US" | "KR" — only when scope="market" or to filter by market
+  publishedAt  DateTime
+  title        String
+  source       String?
+  url          String
+  summary      String?
+  externalId   String?  // upsert key (Naver articleId, Finnhub id)
+  createdAt    DateTime @default(now())
+
+  ticker Ticker? @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@index([symbol, publishedAt(sort: Desc)])
+  @@index([scope, market, publishedAt(sort: Desc)])
+  @@unique([symbol, externalId])
+  @@map("news_items")
 }
 
 model ValidationResult {

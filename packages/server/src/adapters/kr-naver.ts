@@ -1,9 +1,34 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem } from './base.js';
 import { AdapterError } from './base.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
 const INTEG_URL = (code: string) => `https://m.stock.naver.com/api/stock/${encodeURIComponent(code)}/integration`;
+const NEWS_URL = (code: string, pageSize = 20) =>
+  `https://m.stock.naver.com/api/news/stock/${encodeURIComponent(code)}?pageSize=${pageSize}`;
+
+interface NaverNewsItem {
+  id?: string;
+  officeId?: string;
+  articleId?: string;
+  officeName?: string;
+  datetime?: string;  // "YYYYMMDDHHmm"
+  title?: string;
+  body?: string;
+}
+interface NaverNewsWrapper { total?: number; items?: NaverNewsItem[]; }
+
+function parseNaverNewsDatetime(s: string | undefined): Date {
+  if (!s || s.length < 12) return new Date();
+  const y = Number(s.slice(0, 4));
+  const mo = Number(s.slice(4, 6));
+  const d = Number(s.slice(6, 8));
+  const h = Number(s.slice(8, 10));
+  const mi = Number(s.slice(10, 12));
+  // 한국 시간 (KST) → UTC 변환 (KST = UTC+9)
+  const kstMs = Date.UTC(y, mo - 1, d, h, mi, 0);
+  return new Date(kstMs - 9 * 60 * 60 * 1000);
+}
 const FINANCE_ANNUAL_URL = (code: string) => `https://m.stock.naver.com/api/stock/${encodeURIComponent(code)}/finance/annual`;
 const SISE_URL = (code: string, from: string, to: string) =>
   `https://api.finance.naver.com/siseJson.naver?symbol=${encodeURIComponent(code)}&requestType=1&startTime=${from}&endTime=${to}&timeframe=day`;
@@ -188,6 +213,29 @@ export class KrNaverAdapter implements MarketAdapter {
   async search(_query: string, _limit = 10): Promise<SearchResult[]> {
     // KR search는 DB 시드(tickers 테이블)에서 처리. 어댑터 search는 빈 결과.
     return [];
+  }
+
+  async getNews(symbol: string, limit = 20): Promise<NewsItem[]> {
+    try {
+      const code = stripKrSuffix(symbol);
+      const body = await fetchJson<NaverNewsWrapper[]>(NEWS_URL(code, limit));
+      const wrap = Array.isArray(body) ? body[0] : undefined;
+      const items = wrap?.items ?? [];
+      return items
+        .filter((n): n is NaverNewsItem & { officeId: string; articleId: string; title: string } =>
+          typeof n.officeId === 'string' && typeof n.articleId === 'string' && typeof n.title === 'string')
+        .slice(0, limit)
+        .map((n): NewsItem => ({
+          externalId: `naver-${n.officeId}-${n.articleId}`,
+          title: n.title,
+          source: n.officeName,
+          url: `https://n.news.naver.com/article/${n.officeId}/${n.articleId}`,
+          summary: n.body && n.body.length > 0 ? n.body.slice(0, 200) : undefined,
+          publishedAt: parseNaverNewsDatetime(n.datetime),
+        }));
+    } catch (_e) {
+      return [];
+    }
   }
 
   async getFinancials(symbol: string): Promise<FinancialPeriod[]> {

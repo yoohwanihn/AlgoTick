@@ -47,6 +47,18 @@ vi.mock('undici', () => ({
     if (url.includes('finnhub.io/api/v1/stock/metric') && url.includes('symbol=ERR')) {
       return { statusCode: 500, body: { json: async () => ({}), text: async () => 'oops' } };
     }
+    if (url.includes('finnhub.io/api/v1/company-news') && url.includes('symbol=AAPL')) {
+      return {
+        statusCode: 200,
+        body: { json: async () => [
+          { id: 1, datetime: 1779196622, headline: 'Apple news headline', source: 'Yahoo', url: 'https://example.com/1', summary: 'short summary' },
+          { id: 2, datetime: 1779100000, headline: 'Another Apple item', source: 'CNBC', url: 'https://example.com/2', summary: '' },
+        ] },
+      };
+    }
+    if (url.includes('finnhub.io/api/v1/company-news') && url.includes('symbol=ERRX')) {
+      return { statusCode: 500, body: { json: async () => [], text: async () => 'oops' } };
+    }
     return { statusCode: 404, body: { json: async () => ({}), text: async () => '' } };
   }),
 }));
@@ -90,5 +102,24 @@ describe('UsYahooAdapter.getFinancials (Finnhub)', () => {
     });
     const fins = await adapter.getFinancials('AAPL');
     expect(fins).toEqual([]);
+  });
+});
+
+describe('UsYahooAdapter.getNews (Finnhub)', () => {
+  let adapter: UsYahooAdapter;
+  beforeEach(() => { adapter = new UsYahooAdapter(); });
+
+  it('returns mapped news items', async () => {
+    const news = await adapter.getNews('AAPL', 10);
+    expect(news.length).toBeGreaterThan(0);
+    expect(news[0]?.title).toBe('Apple news headline');
+    expect(news[0]?.url).toBe('https://example.com/1');
+    expect(news[0]?.externalId).toContain('finnhub-1');
+    expect(news[0]?.publishedAt).toBeInstanceOf(Date);
+  });
+
+  it('returns empty on error', async () => {
+    const news = await adapter.getNews('ERRX');
+    expect(news).toEqual([]);
   });
 });
