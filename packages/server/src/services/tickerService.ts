@@ -1,0 +1,194 @@
+import type { MarketAdapter } from '../adapters/base.js';
+import { getPrisma } from '../db.js';
+import type { CachedResponse, ValidationResult, Market } from '@algotick/shared';
+import { validateQuote, validateCandle, hasErrors, pickWarnings } from '../validators/index.js';
+
+export interface TickerDetail {
+  symbol: string;
+  market: string;
+  exchange: string;
+  name?: string;
+  currency: string;
+  quote: {
+    price: number;
+    volume: number;
+    changePct: number;
+    ts: string;
+  } | null;
+  candles: Array<{
+    date: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>;
+}
+
+const STALE_QUOTE_MS = 60 * 1000;
+
+export async function getTickerDetail(
+  symbol: string,
+  adapter: MarketAdapter,
+): Promise<CachedResponse<TickerDetail>> {
+  const prisma = getPrisma();
+  const master = await prisma.ticker.findUnique({ where: { symbol } });
+  if (!master) throw new Error(`Ticker not found in master: ${symbol}`);
+
+  const log = await prisma.ingestionLog.findUnique({
+    where: { symbol_kind: { symbol, kind: 'quote' } },
+  });
+
+  const now = Date.now();
+  const stale = !log || now - log.lastFetchedAt.getTime() > STALE_QUOTE_MS;
+  const miss = !log;
+  let warnings: ValidationResult[] = [];
+
+  if (miss) {
+    warnings = await refreshTicker(symbol, adapter, master.market as Market);
+  }
+
+  const detail = await readDetailFromDb(symbol);
+  const freshness: 'fresh' | 'stale' = miss ? 'fresh' : stale ? 'stale' : 'fresh';
+  const lastFetchedAt = (await prisma.ingestionLog.findUnique({
+    where: { symbol_kind: { symbol, kind: 'quote' } },
+  }))?.lastFetchedAt.toISOString() ?? new Date().toISOString();
+
+  if (stale && !miss) {
+    void refreshTicker(symbol, adapter, master.market as Market).catch(() => undefined);
+  }
+
+  const dbWarnings = await prisma.validationResult.findMany({
+    where: {
+      symbol,
+      ts: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      severity: { in: ['warning', 'info'] },
+    },
+    orderBy: { ts: 'desc' },
+    take: 20,
+  });
+  const persistedWarnings: ValidationResult[] = dbWarnings.map((w) => ({
+    severity: w.severity as ValidationResult['severity'],
+    code: w.code,
+    message: w.message,
+    details: (w.details as Record<string, unknown> | null) ?? undefined,
+  }));
+
+  return {
+    data: {
+      ...detail,
+      market: master.market,
+      exchange: master.exchange,
+      name: master.nameEn ?? master.nameKo ?? undefined,
+      currency: master.currency,
+    },
+    freshness,
+    lastFetchedAt,
+    warnings: [...warnings, ...persistedWarnings],
+  };
+}
+
+async function refreshTicker(
+  symbol: string,
+  adapter: MarketAdapter,
+  market: Market,
+): Promise<ValidationResult[]> {
+  const prisma = getPrisma();
+  const ctx = { symbol, market };
+  const collectedWarnings: ValidationResult[] = [];
+
+  const quote = await adapter.getQuote(symbol);
+  const quoteResults = validateQuote(quote, ctx);
+  if (hasErrors(quoteResults)) {
+    await persistValidationResults(symbol, 'quote', quoteResults);
+    return pickWarnings(quoteResults);
+  }
+  collectedWarnings.push(...pickWarnings(quoteResults));
+
+  const from = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const candles = await adapter.getDailyOHLCV(symbol, from, new Date());
+
+  const validCandles: typeof candles = [];
+  let prev: { symbol: string; date: string; open: number; high: number; low: number; close: number; volume: number } | undefined;
+  for (const c of candles) {
+    const res = validateCandle(c, prev, ctx);
+    if (hasErrors(res)) {
+      await persistValidationResults(symbol, 'daily', res);
+      continue;
+    }
+    if (res.length > 0) {
+      collectedWarnings.push(...pickWarnings(res));
+      await persistValidationResults(symbol, 'daily', pickWarnings(res));
+    }
+    validCandles.push(c);
+    prev = c;
+  }
+
+  await prisma.$transaction([
+    prisma.quoteIntraday.upsert({
+      where: { symbol_ts: { symbol, ts: quote.ts } },
+      update: { price: quote.price, volume: BigInt(quote.volume), changePct: quote.changePct, source: quote.source },
+      create: { symbol, ts: quote.ts, price: quote.price, volume: BigInt(quote.volume), changePct: quote.changePct, source: quote.source },
+    }),
+    ...validCandles.map((c) => prisma.quoteDaily.upsert({
+      where: { symbol_date: { symbol, date: new Date(c.date) } },
+      update: { open: c.open, high: c.high, low: c.low, close: c.close, adjClose: c.adjClose, volume: BigInt(c.volume) },
+      create: { symbol, date: new Date(c.date), open: c.open, high: c.high, low: c.low, close: c.close, adjClose: c.adjClose, volume: BigInt(c.volume) },
+    })),
+    prisma.ingestionLog.upsert({
+      where: { symbol_kind: { symbol, kind: 'quote' } },
+      update: { lastFetchedAt: new Date() },
+      create: { symbol, kind: 'quote', lastFetchedAt: new Date() },
+    }),
+  ]);
+
+  return collectedWarnings;
+}
+
+async function persistValidationResults(
+  symbol: string,
+  kind: string,
+  results: ValidationResult[],
+): Promise<void> {
+  if (results.length === 0) return;
+  const prisma = getPrisma();
+  await prisma.validationResult.createMany({
+    data: results.map((r) => ({
+      symbol,
+      kind,
+      severity: r.severity,
+      code: r.code,
+      message: r.message,
+      details: (r.details as object) ?? undefined,
+    })),
+  });
+}
+
+async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'market' | 'exchange' | 'name' | 'currency'>> {
+  const prisma = getPrisma();
+  const latest = await prisma.quoteIntraday.findFirst({ where: { symbol }, orderBy: { ts: 'desc' } });
+  const candles = await prisma.quoteDaily.findMany({
+    where: { symbol },
+    orderBy: { date: 'desc' },
+    take: 365,
+  });
+  return {
+    symbol,
+    quote: latest
+      ? {
+          price: Number(latest.price),
+          volume: Number(latest.volume),
+          changePct: Number(latest.changePct),
+          ts: latest.ts.toISOString(),
+        }
+      : null,
+    candles: candles.reverse().map((c) => ({
+      date: c.date.toISOString().slice(0, 10),
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close),
+      volume: Number(c.volume),
+    })),
+  };
+}
