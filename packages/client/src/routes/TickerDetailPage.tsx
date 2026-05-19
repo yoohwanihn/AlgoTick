@@ -3,6 +3,7 @@ import { useTicker } from '../hooks/useTicker.js';
 import { TickerHeader } from '../components/ticker/TickerHeader.js';
 import { TickerSummary } from '../components/ticker/TickerSummary.js';
 import { TickerTabs } from '../components/ticker/TickerTabs.js';
+import { WarningBadge } from '../components/ui/WarningBadge.js';
 
 export function TickerDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -20,7 +21,10 @@ export function TickerDetailPage() {
 
   return (
     <div className="py-4">
-      <TickerHeader res={data} />
+      <div className="flex items-start justify-between mb-2">
+        <TickerHeader res={data} />
+        <WarningBadge warnings={data.warnings ?? []} />
+      </div>
       <TickerSummary res={data} />
       <TickerTabs candles={data.data.candles} />
     </div>

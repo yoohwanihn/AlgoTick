@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { SearchBar } from '../ui/SearchBar.js';
+import { ThemeToggle } from '../ui/ThemeToggle.js';
 
 export function Header() {
   return (
@@ -12,6 +13,7 @@ export function Header() {
         <div className="flex-1 max-w-md">
           <SearchBar />
         </div>
+        <ThemeToggle />
       </div>
     </header>
   );
