@@ -6,6 +6,7 @@ import { TickerDetailPage } from './routes/TickerDetailPage.js';
 import { DashboardPage } from './routes/DashboardPage.js';
 import { PortfolioPage } from './routes/PortfolioPage.js';
 import { ScreenerPage } from './routes/ScreenerPage.js';
+import { ComparePage } from './routes/ComparePage.js';
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
           <Route path="/ticker/:symbol" element={<TickerDetailPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/screener" element={<ScreenerPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
