@@ -6,6 +6,7 @@ import { loadConfig } from './config.js';
 import { getPrisma, disconnectPrisma } from './db.js';
 import { registerHealthRoute } from './api/health.js';
 import { registerSearchRoute } from './api/search.js';
+import { registerTickerRoute } from './api/ticker.js';
 
 async function buildApp() {
   const cfg = loadConfig();
@@ -23,6 +24,7 @@ async function buildApp() {
 
   await registerHealthRoute(app);
   await registerSearchRoute(app);
+  await registerTickerRoute(app);
 
   return app;
 }
