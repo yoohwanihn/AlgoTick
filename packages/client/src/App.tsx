@@ -1,0 +1,38 @@
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { Layout } from './components/layout/Layout.js';
+import { NotFoundPage } from './routes/NotFoundPage.js';
+
+function DashboardPlaceholder() {
+  return (
+    <div className="py-12">
+      <h2 className="text-2xl font-bold mb-4">대시보드</h2>
+      <p className="text-slate-500">관심종목이 비어있어요. 헤더에서 종목을 검색해보세요.</p>
+      <Link to="/ticker/AAPL" className="inline-block mt-4 text-accent hover:underline">
+        AAPL 상세 보기 (테스트 링크) →
+      </Link>
+    </div>
+  );
+}
+
+function SearchPlaceholder() {
+  return <div className="py-12">검색 페이지 (Task 5)</div>;
+}
+
+function TickerPlaceholder() {
+  return <div className="py-12">종목 상세 페이지 (Task 6)</div>;
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<DashboardPlaceholder />} />
+          <Route path="/search" element={<SearchPlaceholder />} />
+          <Route path="/ticker/:symbol" element={<TickerPlaceholder />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
