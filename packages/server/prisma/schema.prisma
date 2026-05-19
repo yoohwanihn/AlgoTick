@@ -210,3 +210,60 @@ model ScreenerRule {
   @@index([createdAt(sort: Desc)])
   @@map("screener_rules")
 }
+
+model MarketIndex {
+  code      String   @id  // "^GSPC", "^KS11", "^VIX", "KRW=X"
+  name      String       // "S&P 500"
+  market    String       // "US" | "KR" | "GLOBAL"
+  kind      String       // "index" | "volatility" | "fx"
+  position  Int      @default(0)
+
+  quotesIntraday IndexQuoteIntraday[]
+  quotesDaily    IndexQuoteDaily[]
+
+  @@map("indices")
+}
+
+model IndexQuoteIntraday {
+  code      String
+  ts        DateTime
+  value     Decimal  @db.Decimal(20, 6)
+  changePct Decimal  @db.Decimal(10, 4)
+  source    String
+
+  index MarketIndex @relation(fields: [code], references: [code], onDelete: Cascade)
+
+  @@id([code, ts])
+  @@index([ts])
+  @@map("index_quotes_intraday")
+}
+
+model IndexQuoteDaily {
+  code   String
+  date   DateTime @db.Date
+  open   Decimal? @db.Decimal(20, 6)
+  high   Decimal? @db.Decimal(20, 6)
+  low    Decimal? @db.Decimal(20, 6)
+  close  Decimal  @db.Decimal(20, 6)
+
+  index MarketIndex @relation(fields: [code], references: [code], onDelete: Cascade)
+
+  @@id([code, date])
+  @@index([code, date(sort: Desc)])
+  @@map("index_quotes_daily")
+}
+
+model MarketEvent {
+  id        String   @id @default(uuid())
+  eventDate DateTime
+  market    String   // "US" | "KR" | "GLOBAL"
+  kind      String   // "earnings" | "economic"
+  symbol    String?  // for earnings
+  title     String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@unique([eventDate, market, kind, symbol, title])
+  @@index([eventDate])
+  @@map("market_events")
+}

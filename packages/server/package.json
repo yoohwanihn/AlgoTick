@@ -14,7 +14,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "seed": "tsx src/seed/seedTickers.ts"
+    "seed": "tsx src/seed/seedTickers.ts",
+    "seed:indices": "tsx src/seed/seedIndices.ts"
   },
   "dependencies": {
     "@algotick/shared": "*",

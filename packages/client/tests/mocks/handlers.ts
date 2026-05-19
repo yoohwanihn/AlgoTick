@@ -36,6 +36,12 @@ export const handlers = [
 
   http.get(`${BASE}/api/compare`, () => HttpResponse.json({ items: [], missingSymbols: [] })),
 
+  http.get(`${BASE}/api/market/indices`, () => HttpResponse.json({ items: [] })),
+  http.get(`${BASE}/api/market/sectors`, () => HttpResponse.json({ items: [] })),
+  http.get(`${BASE}/api/market/movers`, () => HttpResponse.json({ items: [] })),
+  http.get(`${BASE}/api/market/events`, () => HttpResponse.json({ items: [] })),
+  http.get(`${BASE}/api/market/news`, () => HttpResponse.json({ items: [] })),
+
   http.get(`${BASE}/api/ticker/:symbol`, ({ params }) => {
     const symbol = params.symbol as string;
     if (symbol === '__NOPE__') {
