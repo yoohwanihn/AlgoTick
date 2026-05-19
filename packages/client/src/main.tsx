@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { useThemeStore, applyTheme } from './store/themeStore.js';
 import './styles/index.css';
+
+applyTheme(useThemeStore.getState().theme);
 
 const queryClient = new QueryClient({
   defaultOptions: {
