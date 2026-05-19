@@ -13,6 +13,20 @@ export interface NewsItemResponse {
   publishedAt: string;
 }
 
+export interface InsiderTradeResponse {
+  id: string;
+  tradeDate: string;
+  filingDate?: string;
+  personName: string;
+  role?: string;
+  side: 'BUY' | 'SELL';
+  shares: number;
+  price?: number;
+  transactionCode?: string;
+  isDerivative?: boolean;
+  source: string;
+}
+
 export interface FinancialPeriodResponse {
   period: string;
   periodType: 'A' | 'Q';
@@ -59,6 +73,7 @@ export interface TickerDetail {
   signals: Signal[];
   financials: FinancialPeriodResponse[];
   news: NewsItemResponse[];
+  insiderTrades: InsiderTradeResponse[];
 }
 
 const STALE_QUOTE_MS = 60 * 1000;
@@ -223,6 +238,34 @@ async function refreshTicker(
     });
   } catch (_e) { /* non-fatal */ }
 
+  // Insider Trades — best-effort, non-fatal
+  try {
+    const trades = await adapter.getInsiderTrades(symbol, 50);
+    for (const t of trades) {
+      await prisma.insiderTrade.upsert({
+        where: { symbol_externalId: { symbol, externalId: t.externalId } },
+        update: {
+          tradeDate: t.tradeDate, filingDate: t.filingDate, personName: t.personName,
+          role: t.role, side: t.side, shares: BigInt(t.shares),
+          price: t.price, transactionCode: t.transactionCode,
+          isDerivative: t.isDerivative ?? false, source: t.source,
+        },
+        create: {
+          symbol, externalId: t.externalId,
+          tradeDate: t.tradeDate, filingDate: t.filingDate, personName: t.personName,
+          role: t.role, side: t.side, shares: BigInt(t.shares),
+          price: t.price, transactionCode: t.transactionCode,
+          isDerivative: t.isDerivative ?? false, source: t.source,
+        },
+      });
+    }
+    await prisma.ingestionLog.upsert({
+      where: { symbol_kind: { symbol, kind: 'insider' } },
+      update: { lastFetchedAt: new Date() },
+      create: { symbol, kind: 'insider', lastFetchedAt: new Date() },
+    });
+  } catch (_e) { /* non-fatal */ }
+
   return collectedWarnings;
 }
 
@@ -313,6 +356,25 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     publishedAt: n.publishedAt.toISOString(),
   }));
 
+  const tradeRows = await prisma.insiderTrade.findMany({
+    where: { symbol },
+    orderBy: { tradeDate: 'desc' },
+    take: 50,
+  });
+  const insiderTrades: InsiderTradeResponse[] = tradeRows.map((t) => ({
+    id: t.id,
+    tradeDate: t.tradeDate.toISOString(),
+    filingDate: t.filingDate?.toISOString(),
+    personName: t.personName,
+    role: t.role ?? undefined,
+    side: t.side as 'BUY' | 'SELL',
+    shares: Number(t.shares),
+    price: t.price ? Number(t.price) : undefined,
+    transactionCode: t.transactionCode ?? undefined,
+    isDerivative: t.isDerivative,
+    source: t.source,
+  }));
+
   return {
     symbol,
     quote: latest
@@ -328,5 +390,6 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     signals,
     financials,
     news,
+    insiderTrades,
   };
 }

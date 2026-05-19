@@ -62,6 +62,20 @@ export interface NewsItem {
   publishedAt: string;
 }
 
+export interface InsiderTrade {
+  id: string;
+  tradeDate: string;
+  filingDate?: string;
+  personName: string;
+  role?: string;
+  side: 'BUY' | 'SELL';
+  shares: number;
+  price?: number;
+  transactionCode?: string;
+  isDerivative?: boolean;
+  source: string;
+}
+
 export interface TickerDetailData {
   symbol: string;
   market: string;
@@ -74,6 +88,7 @@ export interface TickerDetailData {
   signals: Signal[];
   financials: FinancialPeriod[];
   news: NewsItem[];
+  insiderTrades: InsiderTrade[];
 }
 
 export interface TickerDetailResponse {

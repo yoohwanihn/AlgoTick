@@ -47,6 +47,20 @@ export interface NewsItem {
   publishedAt: Date;
 }
 
+export interface InsiderTradeItem {
+  externalId: string;
+  tradeDate: Date;
+  filingDate?: Date;
+  personName: string;
+  role?: string;
+  side: 'BUY' | 'SELL';
+  shares: number;
+  price?: number;
+  transactionCode?: string;
+  isDerivative?: boolean;
+  source: string;
+}
+
 export interface MarketAdapter {
   readonly market: Market;
   getQuote(symbol: string): Promise<QuoteResult>;
@@ -54,6 +68,7 @@ export interface MarketAdapter {
   search(query: string, limit?: number): Promise<SearchResult[]>;
   getFinancials(symbol: string): Promise<FinancialPeriod[]>;  // NEW
   getNews(symbol: string, limit?: number): Promise<NewsItem[]>;
+  getInsiderTrades(symbol: string, limit?: number): Promise<InsiderTradeItem[]>;
 }
 
 export class AdapterError extends Error {

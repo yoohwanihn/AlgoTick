@@ -1,5 +1,5 @@
 import { request } from 'undici';
-import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem } from './base.js';
+import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem } from './base.js';
 import { AdapterError } from './base.js';
 import { loadConfig } from '../config.js';
 
@@ -18,6 +18,36 @@ function pickNumber(m: Record<string, number | string | null>, key: string): num
   if (typeof v !== 'number' || !Number.isFinite(v)) return null;
   return v;
 }
+const FINNHUB_INSIDER_URL = (symbol: string, key: string) =>
+  `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`;
+
+interface FinnhubInsiderRaw {
+  id?: string | number;
+  name?: string;
+  transactionDate?: string;
+  filingDate?: string;
+  share?: number;
+  change?: number;
+  transactionPrice?: number;
+  transactionCode?: string;
+  isDerivative?: boolean;
+}
+interface FinnhubInsiderResponse {
+  symbol?: string;
+  data?: FinnhubInsiderRaw[];
+}
+
+function classifySide(code: string | undefined, change: number | undefined): 'BUY' | 'SELL' {
+  const buyCodes = new Set(['P', 'A', 'M']);
+  const sellCodes = new Set(['S', 'F', 'D', 'G']);
+  if (code) {
+    if (buyCodes.has(code)) return 'BUY';
+    if (sellCodes.has(code)) return 'SELL';
+  }
+  if (typeof change === 'number') return change >= 0 ? 'BUY' : 'SELL';
+  return 'SELL';
+}
+
 const FINNHUB_NEWS_URL = (symbol: string, fromDate: string, toDate: string, key: string) =>
   `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${fromDate}&to=${toDate}&token=${encodeURIComponent(key)}`;
 
@@ -215,6 +245,32 @@ export class UsYahooAdapter implements MarketAdapter {
           url: n.url as string,
           summary: n.summary && n.summary.length > 0 ? n.summary : undefined,
           publishedAt: n.datetime ? new Date(n.datetime * 1000) : new Date(),
+        }));
+    } catch (_e) {
+      return [];
+    }
+  }
+
+  async getInsiderTrades(symbol: string, limit = 50): Promise<InsiderTradeItem[]> {
+    const cfg = loadConfig();
+    if (!cfg.finnhubApiKey || cfg.finnhubApiKey.length === 0) return [];
+    try {
+      const body = await fetchJson<FinnhubInsiderResponse>(FINNHUB_INSIDER_URL(symbol, cfg.finnhubApiKey), 'finnhub');
+      const items = body.data ?? [];
+      return items
+        .filter((t) => typeof t.name === 'string' && typeof t.transactionDate === 'string' && typeof t.share === 'number')
+        .slice(0, limit)
+        .map((t): InsiderTradeItem => ({
+          externalId: `finnhub-${t.id ?? `${t.name}-${t.transactionDate}-${t.share}`}`,
+          tradeDate: new Date(t.transactionDate as string),
+          filingDate: t.filingDate ? new Date(t.filingDate) : undefined,
+          personName: t.name as string,
+          side: classifySide(t.transactionCode, t.change),
+          shares: Math.abs(Number(t.share)),
+          price: typeof t.transactionPrice === 'number' ? t.transactionPrice : undefined,
+          transactionCode: t.transactionCode,
+          isDerivative: t.isDerivative,
+          source: 'finnhub',
         }));
     } catch (_e) {
       return [];
