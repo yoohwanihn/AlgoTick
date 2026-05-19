@@ -1,8 +1,23 @@
 import { request } from 'undici';
 import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod } from './base.js';
 import { AdapterError } from './base.js';
+import { loadConfig } from '../config.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
+
+const FINNHUB_METRIC_URL = (symbol: string, key: string) =>
+  `https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${encodeURIComponent(key)}`;
+
+interface FinnhubMetricResponse {
+  metric?: Record<string, number | string | null>;
+}
+
+/** Finnhub returns dividend yield as a decimal fraction (0.3574 = 0.36%, NOT 35.74%) but other percents are already in % */
+function pickNumber(m: Record<string, number | string | null>, key: string): number | null {
+  const v = m[key];
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  return v;
+}
 const CHART_URL = (s: string, from: number, to: number) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?period1=${from}&period2=${to}&interval=1d&includePrePost=false`;
 const QUOTE_CHART_URL = (s: string) =>
@@ -120,10 +135,49 @@ export class UsYahooAdapter implements MarketAdapter {
     }
   }
 
-  async getFinancials(_symbol: string): Promise<FinancialPeriod[]> {
-    // Yahoo /v10/quoteSummary requires crumb auth (blocked).
-    // Stage 5b will add Finnhub integration when FINNHUB_API_KEY is configured.
-    return [];
+  async getFinancials(symbol: string): Promise<FinancialPeriod[]> {
+    const cfg = loadConfig();
+    if (!cfg.finnhubApiKey || cfg.finnhubApiKey.length === 0) return [];
+    try {
+      const body = await fetchJson<FinnhubMetricResponse>(FINNHUB_METRIC_URL(symbol, cfg.finnhubApiKey), 'finnhub');
+      const m = body.metric;
+      if (!m) return [];
+
+      // Period: use current date as asOf, period key = current year
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const period = `${year}TTM`;  // mark as trailing-12-month snapshot
+
+      // Dividend yield: Finnhub gives decimal fraction, convert to percent for our schema
+      const divYieldDec = pickNumber(m, 'currentDividendYieldTTM');
+      const dividendYieldPct = divYieldDec !== null ? divYieldDec : null;  // already in % per Finnhub docs spot-check; keep as-is
+
+      const data: Record<string, number | null> = {
+        per: pickNumber(m, 'peTTM') ?? pickNumber(m, 'peNormalizedAnnual'),
+        pbr: pickNumber(m, 'pbAnnual'),
+        psr: pickNumber(m, 'psTTM'),
+        roePct: pickNumber(m, 'roeTTM') ?? pickNumber(m, 'roeRfy'),
+        eps: pickNumber(m, 'epsTTM') ?? pickNumber(m, 'epsAnnual'),
+        dividendYieldPct,
+        revenueGrowthYoyPct: pickNumber(m, 'revenueGrowthTTMYoy'),
+        marketCapMillionUsd: pickNumber(m, 'marketCapitalization'),
+        week52High: pickNumber(m, '52WeekHigh'),
+        week52Low: pickNumber(m, '52WeekLow'),
+        beta: pickNumber(m, 'beta'),
+        currentRatio: pickNumber(m, 'currentRatioAnnual'),
+        debtToEquity: pickNumber(m, 'totalDebt/totalEquityAnnual'),
+      };
+
+      return [{
+        period,
+        periodType: 'A',
+        asOf: now,
+        source: 'finnhub',
+        data,
+      }];
+    } catch (_e) {
+      return [];  // Non-fatal: return empty if Finnhub is unreachable or returns invalid
+    }
   }
 
   async search(query: string, limit = 10): Promise<SearchResult[]> {
