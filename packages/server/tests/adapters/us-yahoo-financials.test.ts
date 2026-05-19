@@ -59,6 +59,21 @@ vi.mock('undici', () => ({
     if (url.includes('finnhub.io/api/v1/company-news') && url.includes('symbol=ERRX')) {
       return { statusCode: 500, body: { json: async () => [], text: async () => 'oops' } };
     }
+    if (url.includes('finnhub.io/api/v1/stock/insider-transactions') && url.includes('symbol=AAPL')) {
+      return {
+        statusCode: 200,
+        body: { json: async () => ({
+          symbol: 'AAPL',
+          data: [
+            { id: 'i1', name: 'Cook Timothy', transactionDate: '2026-05-08', filingDate: '2026-05-10', share: 38713, change: -38713, transactionPrice: 195.5, transactionCode: 'S', isDerivative: false },
+            { id: 'i2', name: 'Maestri Luca', transactionDate: '2026-04-15', filingDate: '2026-04-17', share: 1000, change: 1000, transactionPrice: 180.0, transactionCode: 'P', isDerivative: false },
+          ],
+        }) },
+      };
+    }
+    if (url.includes('finnhub.io/api/v1/stock/insider-transactions') && url.includes('symbol=ERRY')) {
+      return { statusCode: 500, body: { json: async () => ({}), text: async () => 'oops' } };
+    }
     return { statusCode: 404, body: { json: async () => ({}), text: async () => '' } };
   }),
 }));
@@ -121,5 +136,27 @@ describe('UsYahooAdapter.getNews (Finnhub)', () => {
   it('returns empty on error', async () => {
     const news = await adapter.getNews('ERRX');
     expect(news).toEqual([]);
+  });
+});
+
+describe('UsYahooAdapter.getInsiderTrades (Finnhub)', () => {
+  let adapter: UsYahooAdapter;
+  beforeEach(() => { adapter = new UsYahooAdapter(); });
+
+  it('returns mapped insider trades for AAPL', async () => {
+    const trades = await adapter.getInsiderTrades('AAPL');
+    expect(trades).toHaveLength(2);
+    const sell = trades.find((t) => t.personName === 'Cook Timothy');
+    const buy = trades.find((t) => t.personName === 'Maestri Luca');
+    expect(sell?.side).toBe('SELL');
+    expect(sell?.shares).toBe(38713);
+    expect(sell?.transactionCode).toBe('S');
+    expect(buy?.side).toBe('BUY');
+    expect(buy?.shares).toBe(1000);
+  });
+
+  it('returns empty on error', async () => {
+    const trades = await adapter.getInsiderTrades('ERRY');
+    expect(trades).toEqual([]);
   });
 });

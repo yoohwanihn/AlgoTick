@@ -130,3 +130,11 @@ describe('KrNaverAdapter.getNews', () => {
     expect(news).toEqual([]);
   });
 });
+
+describe('KrNaverAdapter.getInsiderTrades (stub)', () => {
+  it('returns empty (DART integration deferred to Stage 5e)', async () => {
+    const adapter = new KrNaverAdapter();
+    const r = await adapter.getInsiderTrades('005930.KS');
+    expect(r).toEqual([]);
+  });
+});
