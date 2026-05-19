@@ -36,6 +36,13 @@ export const handlers = [
           { date: '2026-05-15', open: 230, high: 235, low: 229, close: 233, volume: 45_000_000 },
           { date: '2026-05-16', open: 233, high: 236, low: 232, close: 234, volume: 48_000_000 },
         ],
+        indicators: {
+          ma5: [null, null], ma20: [null, null], ma60: [null, null], ma120: [null, null],
+          rsi14: [null, null],
+          macdLine: [null, null], macdSignal: [null, null], macdHistogram: [null, null],
+          bollingerMiddle: [null, null], bollingerUpper: [null, null], bollingerLower: [null, null],
+        },
+        signals: [],
       },
       freshness: 'fresh',
       lastFetchedAt: new Date().toISOString(),

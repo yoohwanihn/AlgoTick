@@ -24,6 +24,27 @@ export interface TickerQuote {
   ts: string;
 }
 
+export interface Signal {
+  code: string;
+  date: string;
+  message: string;
+  severity: 'info' | 'warning' | 'positive' | 'negative';
+}
+
+export interface IndicatorSeries {
+  ma5: Array<number | null>;
+  ma20: Array<number | null>;
+  ma60: Array<number | null>;
+  ma120: Array<number | null>;
+  rsi14: Array<number | null>;
+  macdLine: Array<number | null>;
+  macdSignal: Array<number | null>;
+  macdHistogram: Array<number | null>;
+  bollingerMiddle: Array<number | null>;
+  bollingerUpper: Array<number | null>;
+  bollingerLower: Array<number | null>;
+}
+
 export interface TickerDetailData {
   symbol: string;
   market: string;
@@ -32,6 +53,8 @@ export interface TickerDetailData {
   currency: string;
   quote: TickerQuote | null;
   candles: TickerCandle[];
+  indicators: IndicatorSeries;
+  signals: Signal[];
 }
 
 export interface TickerDetailResponse {
