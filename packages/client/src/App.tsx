@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Layout } from './components/layout/Layout.js';
 import { NotFoundPage } from './routes/NotFoundPage.js';
+import { SearchPage } from './routes/SearchPage.js';
 
 function DashboardPlaceholder() {
   return (
@@ -14,10 +15,6 @@ function DashboardPlaceholder() {
   );
 }
 
-function SearchPlaceholder() {
-  return <div className="py-12">검색 페이지 (Task 5)</div>;
-}
-
 function TickerPlaceholder() {
   return <div className="py-12">종목 상세 페이지 (Task 6)</div>;
 }
@@ -28,7 +25,7 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<DashboardPlaceholder />} />
-          <Route path="/search" element={<SearchPlaceholder />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/ticker/:symbol" element={<TickerPlaceholder />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
