@@ -1,8 +1,10 @@
+import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import { loadConfig } from './config.js';
 import { getPrisma, disconnectPrisma } from './db.js';
+import { registerHealthRoute } from './api/health.js';
 
 async function buildApp() {
   const cfg = loadConfig();
@@ -18,7 +20,8 @@ async function buildApp() {
   await app.register(sensible);
   await app.register(cors, { origin: true });
 
-  // 라우트는 후속 task에서 등록
+  await registerHealthRoute(app);
+
   return app;
 }
 
@@ -44,6 +47,10 @@ async function start() {
   }
 }
 
-void start();
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMainModule) {
+  void start();
+}
 
 export { buildApp };
