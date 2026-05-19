@@ -36,6 +36,7 @@ model Ticker {
 
   quotesIntraday QuoteIntraday[]
   quotesDaily    QuoteDaily[]
+  financials     Financial[]
 
   @@index([market])
   @@index([exchange])
@@ -81,6 +82,23 @@ model IngestionLog {
 
   @@id([symbol, kind])
   @@map("ingestion_log")
+}
+
+model Financial {
+  symbol      String
+  period      String   // "202312" (annual) or "2025Q1" (quarterly)
+  periodType  String   // "A" (annual) or "Q" (quarterly)
+  asOf        DateTime // period 마감일
+  source      String   // "naver" / "finnhub" / "sec" / etc.
+  data        Json     // 모든 재무 항목 (revenue, op_income, net_income, roe, per, pbr, ...)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@id([symbol, period])
+  @@index([symbol, asOf(sort: Desc)])
+  @@map("financials")
 }
 
 model ValidationResult {

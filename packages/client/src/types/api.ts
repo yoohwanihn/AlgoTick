@@ -45,6 +45,14 @@ export interface IndicatorSeries {
   bollingerLower: Array<number | null>;
 }
 
+export interface FinancialPeriod {
+  period: string;
+  periodType: 'A' | 'Q';
+  asOf: string;
+  source: string;
+  data: Record<string, number | null>;
+}
+
 export interface TickerDetailData {
   symbol: string;
   market: string;
@@ -55,6 +63,7 @@ export interface TickerDetailData {
   candles: TickerCandle[];
   indicators: IndicatorSeries;
   signals: Signal[];
+  financials: FinancialPeriod[];
 }
 
 export interface TickerDetailResponse {
