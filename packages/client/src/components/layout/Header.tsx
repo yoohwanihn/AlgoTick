@@ -10,6 +10,7 @@ export function Header() {
         <nav className="flex gap-4 text-sm text-slate-600 dark:text-slate-400 shrink-0">
           <Link to="/" className="hover:text-accent">대시보드</Link>
           <Link to="/portfolio" className="hover:text-accent">포트폴리오</Link>
+          <Link to="/screener" className="hover:text-accent">스크리너</Link>
         </nav>
         <div className="flex-1 max-w-md">
           <SearchBar />

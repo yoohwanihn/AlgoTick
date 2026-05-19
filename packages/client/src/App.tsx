@@ -5,6 +5,7 @@ import { SearchPage } from './routes/SearchPage.js';
 import { TickerDetailPage } from './routes/TickerDetailPage.js';
 import { DashboardPage } from './routes/DashboardPage.js';
 import { PortfolioPage } from './routes/PortfolioPage.js';
+import { ScreenerPage } from './routes/ScreenerPage.js';
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/ticker/:symbol" element={<TickerDetailPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/screener" element={<ScreenerPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
