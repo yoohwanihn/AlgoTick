@@ -1,9 +1,7 @@
 import { getPrisma } from '../../db.js';
-import { UsYahooAdapter } from '../../adapters/us-yahoo.js';
+import { getAdapter } from '../../adapters/router.js';
 import { broadcast, activeSymbols } from '../../sse/hub.js';
 import { validateQuote, hasErrors, pickWarnings } from '../../validators/index.js';
-
-const usYahoo = new UsYahooAdapter();
 
 export async function pollActive(): Promise<{ symbols: string[]; updated: number }> {
   const envList = (process.env.WATCHLIST_SYMBOLS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -15,10 +13,12 @@ export async function pollActive(): Promise<{ symbols: string[]; updated: number
   let updated = 0;
   for (const symbol of targets) {
     const master = await prisma.ticker.findUnique({ where: { symbol } });
-    if (!master || master.market !== 'US') continue;
+    if (!master) continue;
     try {
-      const q = await usYahoo.getQuote(symbol);
-      const results = validateQuote(q, { symbol, market: 'US' });
+      const adapter = getAdapter(master.market as 'US' | 'KR');
+      const q = await adapter.getQuote(symbol);
+      const ctx = { symbol, market: master.market as 'US' | 'KR' };
+      const results = validateQuote(q, ctx);
       if (hasErrors(results)) continue;
       const warnings = pickWarnings(results);
       await prisma.$transaction([

@@ -1,9 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { UsYahooAdapter } from '../adapters/us-yahoo.js';
+import { getAdapter } from '../adapters/router.js';
 import { getTickerDetail } from '../services/tickerService.js';
 import { getPrisma } from '../db.js';
-
-const usYahoo = new UsYahooAdapter();
 
 export async function registerTickerRoute(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { symbol: string } }>('/api/ticker/:symbol', async (req, reply) => {
@@ -13,12 +11,9 @@ export async function registerTickerRoute(app: FastifyInstance): Promise<void> {
       reply.code(404);
       return { error: { code: 'NOT_FOUND', message: `Ticker ${symbol} not found` } };
     }
-    if (master.market === 'KR') {
-      reply.code(501);
-      return { error: { code: 'NOT_IMPLEMENTED', message: 'KR market arrives in Stage 4' } };
-    }
     try {
-      const result = await getTickerDetail(symbol, usYahoo);
+      const adapter = getAdapter(master.market as 'US' | 'KR');
+      const result = await getTickerDetail(symbol, adapter);
       return result;
     } catch (e) {
       req.log.error({ err: e }, 'ticker detail failed');
