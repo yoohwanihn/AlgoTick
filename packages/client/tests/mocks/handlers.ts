@@ -19,6 +19,11 @@ export const handlers = [
     return HttpResponse.json({ results });
   }),
 
+  http.get(`${BASE}/api/watchlist`, () => HttpResponse.json({ items: [] })),
+  http.get(`${BASE}/api/watchlist/has/:symbol`, () => HttpResponse.json({ exists: false })),
+  http.post(`${BASE}/api/watchlist`, () => HttpResponse.json({ ok: true, item: { symbol: 'MOCK', position: 1, addedAt: new Date().toISOString() } })),
+  http.delete(`${BASE}/api/watchlist/:symbol`, () => HttpResponse.json({ ok: true })),
+
   http.get(`${BASE}/api/ticker/:symbol`, ({ params }) => {
     const symbol = params.symbol as string;
     if (symbol === '__NOPE__') {

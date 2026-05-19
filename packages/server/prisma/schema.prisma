@@ -46,6 +46,7 @@ model Ticker {
   financials     Financial[]
   news           News[]
   insiderTrades  InsiderTrade[]
+  watchlist      Watchlist?
 
   @@index([market])
   @@index([exchange])
@@ -153,6 +154,18 @@ model InsiderTrade {
   @@unique([symbol, externalId])
   @@index([symbol, tradeDate(sort: Desc)])
   @@map("insider_trades")
+}
+
+model Watchlist {
+  symbol     String   @id
+  addedAt    DateTime @default(now())
+  memo       String?
+  position   Int      @default(0)  // 정렬 순서
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@index([position])
+  @@map("watchlist")
 }
 
 model ValidationResult {
