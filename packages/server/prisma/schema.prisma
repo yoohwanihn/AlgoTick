@@ -47,6 +47,7 @@ model Ticker {
   news           News[]
   insiderTrades  InsiderTrade[]
   watchlist      Watchlist?
+  portfolioLots  PortfolioLot[]
 
   @@index([market])
   @@index([exchange])
@@ -166,6 +167,22 @@ model Watchlist {
 
   @@index([position])
   @@map("watchlist")
+}
+
+model PortfolioLot {
+  id        String   @id @default(uuid())
+  symbol    String
+  side      String   // "BUY" | "SELL"
+  qty       Decimal  @db.Decimal(20, 6)   // 소수 지원 (split-adjusted)
+  price     Decimal  @db.Decimal(20, 6)
+  tradedAt  DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@index([symbol, tradedAt(sort: Desc)])
+  @@map("portfolio_lots")
 }
 
 model ValidationResult {
