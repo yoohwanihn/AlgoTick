@@ -38,6 +38,7 @@ export function TickerDetailPage() {
           financials={data.data.financials}
           news={data.data.news}
           insiderTrades={data.data.insiderTrades}
+          institutionalHoldings={data.data.institutionalHoldings}
           profile={data.data.profile}
           symbol={data.data.symbol}
           market={data.data.market}

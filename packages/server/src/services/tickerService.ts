@@ -3,6 +3,7 @@ import { getPrisma } from '../db.js';
 import type { CachedResponse, ValidationResult, Market } from '@algotick/shared';
 import { validateQuote, validateCandle, hasErrors, pickWarnings } from '../validators/index.js';
 import { sma, rsi, macd, bollinger, detectSignals, type Signal, type CandleForSignals } from '../indicators/index.js';
+import { dartGetInstitutionalHoldings } from '../adapters/kr-dart.js';
 
 export interface NewsItemResponse {
   id: string;
@@ -36,6 +37,17 @@ export interface InsiderTradeResponse {
   price?: number;
   transactionCode?: string;
   isDerivative?: boolean;
+  source: string;
+}
+
+export interface InstitutionalHoldingResponse {
+  id: string;
+  holderName: string;
+  reportDate: string;
+  shares: number;
+  pctOfFloat?: number;
+  prevShares?: number;
+  prevPctOfFloat?: number;
   source: string;
 }
 
@@ -86,6 +98,7 @@ export interface TickerDetail {
   financials: FinancialPeriodResponse[];
   news: NewsItemResponse[];
   insiderTrades: InsiderTradeResponse[];
+  institutionalHoldings: InstitutionalHoldingResponse[];
   profile: ProfileResponse | null;
 }
 
@@ -280,6 +293,43 @@ async function refreshTicker(
     });
   } catch (_e) { /* non-fatal */ }
 
+  // Institutional holdings (KR via DART)
+  {
+    const masterRow = await prisma.ticker.findUnique({ where: { symbol } });
+    if (masterRow?.market === 'KR' && masterRow.dartCorpCode) {
+      try {
+        const holdings = await dartGetInstitutionalHoldings(symbol, masterRow.dartCorpCode, 100);
+        for (const h of holdings) {
+          await prisma.institutionalHolding.upsert({
+            where: { symbol_externalId: { symbol, externalId: h.externalId } },
+            update: {
+              holderName: h.holderName, reportDate: h.reportDate,
+              shares: BigInt(Math.round(h.shares)),
+              pctOfFloat: h.pctOfFloat ?? undefined,
+              prevShares: h.prevShares !== undefined ? BigInt(Math.round(h.prevShares)) : undefined,
+              prevPctOfFloat: h.prevPctOfFloat ?? undefined,
+              source: h.source,
+            },
+            create: {
+              symbol, externalId: h.externalId,
+              holderName: h.holderName, reportDate: h.reportDate,
+              shares: BigInt(Math.round(h.shares)),
+              pctOfFloat: h.pctOfFloat,
+              prevShares: h.prevShares !== undefined ? BigInt(Math.round(h.prevShares)) : undefined,
+              prevPctOfFloat: h.prevPctOfFloat,
+              source: h.source,
+            },
+          });
+        }
+        await prisma.ingestionLog.upsert({
+          where: { symbol_kind: { symbol, kind: 'institutional' } },
+          update: { lastFetchedAt: new Date() },
+          create: { symbol, kind: 'institutional', lastFetchedAt: new Date() },
+        });
+      } catch (_e) { /* non-fatal */ }
+    }
+  }
+
   // Profile — best-effort, 7-day stale
   try {
     const profileLog = await prisma.ingestionLog.findUnique({
@@ -431,6 +481,22 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     source: t.source,
   }));
 
+  const ihRows = await prisma.institutionalHolding.findMany({
+    where: { symbol },
+    orderBy: { reportDate: 'desc' },
+    take: 30,
+  });
+  const institutionalHoldings: InstitutionalHoldingResponse[] = ihRows.map((h) => ({
+    id: h.id,
+    holderName: h.holderName,
+    reportDate: h.reportDate.toISOString(),
+    shares: Number(h.shares),
+    pctOfFloat: h.pctOfFloat ? Number(h.pctOfFloat) : undefined,
+    prevShares: h.prevShares ? Number(h.prevShares) : undefined,
+    prevPctOfFloat: h.prevPctOfFloat ? Number(h.prevPctOfFloat) : undefined,
+    source: h.source,
+  }));
+
   return {
     symbol,
     quote: latest
@@ -447,6 +513,7 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
     financials,
     news,
     insiderTrades,
+    institutionalHoldings,
     profile,
   };
 }
