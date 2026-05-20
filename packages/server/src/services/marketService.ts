@@ -282,7 +282,7 @@ export interface MarketEventRow {
   meta: Record<string, unknown> | null;
 }
 
-export async function listMarketEvents(daysAhead = 7, market?: string): Promise<MarketEventRow[]> {
+export async function listMarketEvents(daysAhead = 7, market?: string, limit = 500): Promise<MarketEventRow[]> {
   const prisma = getPrisma();
   const now = new Date();
   const to = new Date(now.getTime() + daysAhead * 86400_000);
@@ -292,7 +292,7 @@ export async function listMarketEvents(daysAhead = 7, market?: string): Promise<
       ...(market ? { market } : {}),
     },
     orderBy: { eventDate: 'asc' },
-    take: 500,
+    take: Math.min(Math.max(limit, 1), 5000),
   });
   return events.map((e) => ({
     id: e.id,
