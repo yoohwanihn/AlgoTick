@@ -81,4 +81,40 @@ describe('Portfolio API', () => {
     const del = await app.inject({ method: 'DELETE', url: `/api/portfolio/lots/${id}` });
     expect(del.statusCode).toBe(200);
   });
+
+  it('multi-currency: USD와 KRW lot이 base(USD)로 합산되어야 함', async () => {
+    const prisma = getPrisma();
+    // 환율 seed
+    await prisma.marketIndex.upsert({
+      where: { code: 'KRW=X' },
+      update: {},
+      create: { code: 'KRW=X', name: 'USD/KRW', market: 'GLOBAL', kind: 'fx', position: 99 },
+    });
+    await prisma.indexQuoteIntraday.create({
+      data: { code: 'KRW=X', ts: new Date(), value: 1500, changePct: 0, source: 'test' },
+    });
+    // KRW 종목 seed
+    await prisma.portfolioLot.deleteMany({ where: { symbol: 'KRTEST.KS' } });
+    await prisma.ticker.deleteMany({ where: { symbol: 'KRTEST.KS' } });
+    await prisma.ticker.create({
+      data: { symbol: 'KRTEST.KS', market: 'KR', exchange: 'KOSPI', nameKo: '환산테스트', currency: 'KRW' },
+    });
+    try {
+      await app.inject({ method: 'POST', url: '/api/portfolio/lots', payload: { symbol: 'PFTEST', side: 'BUY', qty: 10, price: 100 } });   // $1000
+      await app.inject({ method: 'POST', url: '/api/portfolio/lots', payload: { symbol: 'KRTEST.KS', side: 'BUY', qty: 100, price: 15000 } }); // ₩1.5M = $1000
+      const res = await app.inject({ method: 'GET', url: '/api/portfolio' });
+      const body = res.json();
+      expect(body.baseCurrency).toBe('USD');
+      expect(body.fxRates).toHaveProperty('KRW');
+      const usPos = body.positions.find((p: { symbol: string }) => p.symbol === 'PFTEST');
+      const krPos = body.positions.find((p: { symbol: string }) => p.symbol === 'KRTEST.KS');
+      expect(usPos.costBasis).toBeCloseTo(1000, 1);
+      expect(usPos.costBasisBase).toBeCloseTo(1000, 1); // USD는 1:1
+      expect(krPos.costBasis).toBeCloseTo(1500000, 1); // native(KRW)
+      expect(krPos.costBasisBase).toBeCloseTo(1000, 1); // ₩1.5M / 1500 = $1000
+    } finally {
+      await prisma.portfolioLot.deleteMany({ where: { symbol: 'KRTEST.KS' } });
+      await prisma.ticker.deleteMany({ where: { symbol: 'KRTEST.KS' } });
+    }
+  });
 });

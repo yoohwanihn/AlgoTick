@@ -5,8 +5,13 @@ export interface PortfolioPosition {
   qty: number; avgCost: number;
   currentPrice: number | null; marketValue: number | null; costBasis: number;
   unrealizedPnl: number | null; unrealizedPnlPct: number | null; lotsCount: number;
+  costBasisBase: number;
+  marketValueBase: number | null;
+  unrealizedPnlBase: number | null;
 }
 export interface PortfolioSummary {
+  baseCurrency: string;
+  fxRates: Record<string, number>;
   totalCostBasis: number;
   totalMarketValue: number | null;
   totalUnrealizedPnl: number | null;

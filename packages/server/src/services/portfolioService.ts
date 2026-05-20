@@ -1,5 +1,7 @@
 import { getPrisma } from '../db.js';
 
+const BASE_CURRENCY = 'USD';
+
 export interface PortfolioPosition {
   symbol: string;
   name: string;
@@ -14,14 +16,44 @@ export interface PortfolioPosition {
   unrealizedPnl: number | null;
   unrealizedPnlPct: number | null;
   lotsCount: number;
+  // base(USD) 환산
+  costBasisBase: number;
+  marketValueBase: number | null;
+  unrealizedPnlBase: number | null;
 }
 
 export interface PortfolioSummary {
-  totalCostBasis: number;
-  totalMarketValue: number | null;
+  baseCurrency: string;
+  fxRates: Record<string, number>; // currency → 1 unit = X base
+  totalCostBasis: number;          // base 단위
+  totalMarketValue: number | null; // base 단위
   totalUnrealizedPnl: number | null;
   totalUnrealizedPnlPct: number | null;
   positions: PortfolioPosition[];
+}
+
+async function loadFxRates(prisma: ReturnType<typeof getPrisma>): Promise<Record<string, number>> {
+  // KRW=X 값이 N이면 1 USD = N KRW → 1 KRW = 1/N USD
+  const rates: Record<string, number> = { USD: 1 };
+  const latest = await prisma.indexQuoteIntraday.findMany({
+    where: { code: { in: ['KRW=X', 'JPY=X'] } },
+    orderBy: { ts: 'desc' },
+  });
+  const byCode = new Map<string, number>();
+  for (const q of latest) {
+    if (!byCode.has(q.code)) byCode.set(q.code, Number(q.value));
+  }
+  const krw = byCode.get('KRW=X');
+  const jpy = byCode.get('JPY=X');
+  if (krw && krw > 0) rates.KRW = 1 / krw;
+  if (jpy && jpy > 0) rates.JPY = 1 / jpy;
+  return rates;
+}
+
+function toBase(amount: number, currency: string, rates: Record<string, number>): number | null {
+  const r = rates[currency];
+  if (r === undefined) return null; // 환율 없음
+  return amount * r;
 }
 
 export async function getPortfolio(): Promise<PortfolioSummary> {
@@ -49,9 +81,11 @@ export async function getPortfolio(): Promise<PortfolioSummary> {
     if (!priceBySymbol.has(q.symbol)) priceBySymbol.set(q.symbol, Number(q.price));
   }
 
+  const fxRates = await loadFxRates(prisma);
+
   const positions: PortfolioPosition[] = [];
-  let totalCost = 0;
-  let totalMv: number | null = 0;
+  let totalCostBase = 0;
+  let totalMvBase: number | null = 0;
 
   for (const [symbol, symLots] of bySymbol.entries()) {
     let qty = 0;
@@ -82,6 +116,10 @@ export async function getPortfolio(): Promise<PortfolioSummary> {
     const unrealizedPnl = marketValue !== null ? marketValue - cost : null;
     const unrealizedPnlPct = unrealizedPnl !== null && cost > 0 ? (unrealizedPnl / cost) * 100 : null;
 
+    const costBasisBase = toBase(cost, ticker.currency, fxRates);
+    const marketValueBase = marketValue !== null ? toBase(marketValue, ticker.currency, fxRates) : null;
+    const unrealizedPnlBase = marketValueBase !== null && costBasisBase !== null ? marketValueBase - costBasisBase : null;
+
     positions.push({
       symbol,
       name: ticker.nameEn ?? ticker.nameKo ?? symbol,
@@ -96,21 +134,32 @@ export async function getPortfolio(): Promise<PortfolioSummary> {
       unrealizedPnl,
       unrealizedPnlPct,
       lotsCount: symLots.length,
+      costBasisBase: costBasisBase ?? cost, // 환율 없으면 native 그대로(예외상황)
+      marketValueBase,
+      unrealizedPnlBase,
     });
 
-    totalCost += cost;
-    if (marketValue !== null && totalMv !== null) totalMv += marketValue;
-    else totalMv = null;
+    // 환율 모르는 종목이 하나라도 있으면 totals를 null로 떨어뜨림
+    if (costBasisBase === null) {
+      totalCostBase = NaN;
+    } else {
+      totalCostBase += costBasisBase;
+    }
+    if (marketValueBase !== null && totalMvBase !== null) totalMvBase += marketValueBase;
+    else totalMvBase = null;
   }
 
-  const totalUnrealizedPnl = totalMv !== null ? totalMv - totalCost : null;
-  const totalUnrealizedPnlPct = totalUnrealizedPnl !== null && totalCost > 0 ? (totalUnrealizedPnl / totalCost) * 100 : null;
+  const totalCostFinal = Number.isFinite(totalCostBase) ? totalCostBase : 0;
+  const totalUnrealizedPnl = totalMvBase !== null ? totalMvBase - totalCostFinal : null;
+  const totalUnrealizedPnlPct = totalUnrealizedPnl !== null && totalCostFinal > 0 ? (totalUnrealizedPnl / totalCostFinal) * 100 : null;
 
   return {
-    totalCostBasis: totalCost,
-    totalMarketValue: totalMv,
+    baseCurrency: BASE_CURRENCY,
+    fxRates,
+    totalCostBasis: totalCostFinal,
+    totalMarketValue: totalMvBase,
     totalUnrealizedPnl,
     totalUnrealizedPnlPct,
-    positions: positions.sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0)),
+    positions: positions.sort((a, b) => (b.marketValueBase ?? 0) - (a.marketValueBase ?? 0)),
   };
 }
