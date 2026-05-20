@@ -132,4 +132,29 @@ describe('Market API', () => {
     const body = res.json();
     expect(Array.isArray(body.items)).toBe(true);
   });
+
+  it('GET /api/market/news dedup: 같은 제목 다른 externalId는 1회만 노출', async () => {
+    const prisma = getPrisma();
+    const baseTitle = '__DEDUP_TEST__ Stocks fall as yields rise';
+    await prisma.news.deleteMany({ where: { title: baseTitle } });
+    try {
+      // 같은 제목·source가 다른 externalId로 3건 들어간 상황을 재현
+      for (let i = 0; i < 3; i++) {
+        await prisma.news.create({
+          data: {
+            symbol: null, scope: 'market', market: 'GLOBAL',
+            externalId: `dedup-${i}-${Date.now()}`,
+            title: baseTitle, source: 'Reuters', url: `https://example.com/${i}`,
+            publishedAt: new Date(),
+          },
+        });
+      }
+      const res = await app.inject({ method: 'GET', url: '/api/market/news?limit=30' });
+      const body = res.json();
+      const matched = body.items.filter((n: { title: string }) => n.title === baseTitle);
+      expect(matched.length).toBe(1);
+    } finally {
+      await prisma.news.deleteMany({ where: { title: baseTitle } });
+    }
+  });
 });
