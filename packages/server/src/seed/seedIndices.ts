@@ -9,7 +9,7 @@ const INDICES = [
   { code: '^KQ11', name: 'KOSDAQ',    market: 'KR', kind: 'index',      position: 6 },
   { code: 'KRW=X', name: 'USD/KRW',   market: 'GLOBAL', kind: 'fx',    position: 7 },
   { code: '^N225', name: 'Nikkei 225', market: 'JP',    kind: 'index',  position: 8 },
-  { code: '^TOPX', name: 'TOPIX',      market: 'JP',    kind: 'index',  position: 9 },
+  { code: '1306.T', name: 'TOPIX (1306.T ETF)', market: 'JP', kind: 'index', position: 9 },
   { code: 'JPY=X', name: 'USD/JPY',    market: 'GLOBAL', kind: 'fx',   position: 10 },
 ];
 
