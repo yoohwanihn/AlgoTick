@@ -11,6 +11,7 @@ datasource db {
 enum Market {
   US
   KR
+  JP
 }
 
 enum Exchange {
@@ -18,6 +19,7 @@ enum Exchange {
   NYSE
   KOSPI
   KOSDAQ
+  TSE
 }
 
 model Ticker {

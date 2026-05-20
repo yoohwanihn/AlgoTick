@@ -19,9 +19,9 @@ export async function pollActive(): Promise<{ symbols: string[]; updated: number
     const master = await prisma.ticker.findUnique({ where: { symbol } });
     if (!master) continue;
     try {
-      const adapter = getAdapter(master.market as 'US' | 'KR');
+      const adapter = getAdapter(master.market as 'US' | 'KR' | 'JP');
       const q = await adapter.getQuote(symbol);
-      const ctx = { symbol, market: master.market as 'US' | 'KR' };
+      const ctx = { symbol, market: master.market as 'US' | 'KR' | 'JP' };
       const results = validateQuote(q, ctx);
       if (hasErrors(results)) continue;
       const warnings = pickWarnings(results);

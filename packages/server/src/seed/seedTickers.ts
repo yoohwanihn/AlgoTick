@@ -7,8 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface SeedTicker {
   symbol: string;
-  market: 'US' | 'KR';
-  exchange: 'NASDAQ' | 'NYSE' | 'KOSPI' | 'KOSDAQ';
+  market: 'US' | 'KR' | 'JP';
+  exchange: 'NASDAQ' | 'NYSE' | 'KOSPI' | 'KOSDAQ' | 'TSE';
   nameEn?: string;
   nameKo?: string;
   sector?: string;
@@ -22,7 +22,7 @@ function loadSeedFile(name: string): SeedTicker[] {
 
 async function main() {
   const prisma = getPrisma();
-  const all = [...loadSeedFile('us-top.json'), ...loadSeedFile('kr-top.json')];
+  const all = [...loadSeedFile('us-top.json'), ...loadSeedFile('kr-top.json'), ...loadSeedFile('jp-top.json')];
 
   for (const t of all) {
     await prisma.ticker.upsert({

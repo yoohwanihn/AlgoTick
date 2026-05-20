@@ -1,0 +1,2 @@
+ALTER TYPE "Market" ADD VALUE 'JP';
+ALTER TYPE "Exchange" ADD VALUE 'TSE';

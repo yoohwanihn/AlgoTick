@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-export const MarketSchema = z.enum(['US', 'KR']);
+export const MarketSchema = z.enum(['US', 'KR', 'JP']);
 export type Market = z.infer<typeof MarketSchema>;
 
-export const ExchangeSchema = z.enum(['NASDAQ', 'NYSE', 'KOSPI', 'KOSDAQ']);
+export const ExchangeSchema = z.enum(['NASDAQ', 'NYSE', 'KOSPI', 'KOSDAQ', 'TSE']);
 export type Exchange = z.infer<typeof ExchangeSchema>;
 
 export const TickerSchema = z.object({
@@ -14,7 +14,7 @@ export const TickerSchema = z.object({
   nameKo: z.string().optional(),
   sector: z.string().optional(),
   industry: z.string().optional(),
-  currency: z.enum(['USD', 'KRW']),
+  currency: z.enum(['USD', 'KRW', 'JPY']),
   listedAt: z.string().datetime().optional(),
   delistedAt: z.string().datetime().optional(),
 });

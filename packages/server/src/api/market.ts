@@ -4,7 +4,7 @@ import {
   listIndices, sectorHeatmap, topMovers, listMarketEvents, listMarketNews,
 } from '../services/marketService.js';
 
-const MarketQuery = z.object({ market: z.enum(['US', 'KR', 'GLOBAL']).optional() });
+const MarketQuery = z.object({ market: z.enum(['US', 'KR', 'JP', 'GLOBAL']).optional() });
 const MoverQuery = MarketQuery.extend({
   direction: z.enum(['up', 'down', 'volume']).default('up'),
   limit: z.coerce.number().int().positive().max(50).default(10),
