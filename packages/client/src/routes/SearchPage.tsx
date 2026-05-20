@@ -20,7 +20,7 @@ export function SearchPage() {
               className="flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-900 -mx-2 px-2 py-1 rounded"
             >
               <span className="font-mono font-bold w-24">{r.symbol}</span>
-              <span className="flex-1 text-slate-700 dark:text-slate-300">{r.nameEn ?? r.nameKo}</span>
+              <span className="flex-1 text-slate-700 dark:text-slate-300">{r.nameKo ?? r.nameEn}</span>
               <span className="text-xs text-slate-500">{r.exchange}</span>
             </Link>
           </li>

@@ -90,7 +90,7 @@ export async function runScreener(conditions: ScreenerCondition[]): Promise<Scre
 
     hits.push({
       symbol: t.symbol,
-      name: t.nameEn ?? t.nameKo ?? t.symbol,
+      name: t.nameKo ?? t.nameEn ?? t.symbol,
       market: t.market,
       exchange: t.exchange,
       currency: t.currency,

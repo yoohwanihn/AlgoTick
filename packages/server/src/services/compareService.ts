@@ -82,7 +82,7 @@ export async function compareTickers(symbols: string[]): Promise<CompareResponse
     const ascCandles = (candlesBySymbol.get(sym) ?? []).slice().reverse();
     positions.push({
       symbol: sym,
-      name: t.nameEn ?? t.nameKo ?? sym,
+      name: t.nameKo ?? t.nameEn ?? sym,
       market: t.market as string,
       exchange: t.exchange as string,
       currency: t.currency,

@@ -56,7 +56,7 @@ export function SearchBar() {
               className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 flex justify-between gap-2"
             >
               <span className="font-mono font-bold">{r.symbol}</span>
-              <span className="text-slate-500 truncate">{r.nameEn ?? r.nameKo}</span>
+              <span className="text-slate-500 truncate">{r.nameKo ?? r.nameEn}</span>
             </button>
           ))}
         </div>
