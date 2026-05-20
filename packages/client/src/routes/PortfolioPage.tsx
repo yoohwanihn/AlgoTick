@@ -61,26 +61,34 @@ export function PortfolioPage() {
       )}
 
       {pf && positions.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-            <div className="text-xs text-slate-500 uppercase">총 매수금액</div>
-            <div className="text-lg font-semibold mt-1">${pf.totalCostBasis.toFixed(0)}</div>
-          </div>
-          <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-            <div className="text-xs text-slate-500 uppercase">평가금액</div>
-            <div className="text-lg font-semibold mt-1">{pf.totalMarketValue !== null ? `$${pf.totalMarketValue.toFixed(0)}` : '-'}</div>
-          </div>
-          <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-            <div className="text-xs text-slate-500 uppercase">평가손익</div>
-            <div className={`text-lg font-semibold mt-1 ${(pf.totalUnrealizedPnl ?? 0) >= 0 ? 'text-bull' : 'text-bear'}`}>
-              {pf.totalUnrealizedPnl !== null ? `${pf.totalUnrealizedPnl >= 0 ? '+' : ''}$${pf.totalUnrealizedPnl.toFixed(0)}` : '-'}
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+              <div className="text-xs text-slate-500 uppercase">총 매수금액 ({pf.baseCurrency})</div>
+              <div className="text-lg font-semibold mt-1">${pf.totalCostBasis.toFixed(0)}</div>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+              <div className="text-xs text-slate-500 uppercase">평가금액 ({pf.baseCurrency})</div>
+              <div className="text-lg font-semibold mt-1">{pf.totalMarketValue !== null ? `$${pf.totalMarketValue.toFixed(0)}` : '-'}</div>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+              <div className="text-xs text-slate-500 uppercase">평가손익 ({pf.baseCurrency})</div>
+              <div className={`text-lg font-semibold mt-1 ${(pf.totalUnrealizedPnl ?? 0) >= 0 ? 'text-bull' : 'text-bear'}`}>
+                {pf.totalUnrealizedPnl !== null ? `${pf.totalUnrealizedPnl >= 0 ? '+' : ''}$${pf.totalUnrealizedPnl.toFixed(0)}` : '-'}
+              </div>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+              <div className="text-xs text-slate-500 uppercase">수익률</div>
+              <div className={`text-lg font-semibold mt-1 ${(pf.totalUnrealizedPnlPct ?? 0) >= 0 ? 'text-bull' : 'text-bear'}`}>{fmtPct(pf.totalUnrealizedPnlPct)}</div>
             </div>
           </div>
-          <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-            <div className="text-xs text-slate-500 uppercase">수익률</div>
-            <div className={`text-lg font-semibold mt-1 ${(pf.totalUnrealizedPnlPct ?? 0) >= 0 ? 'text-bull' : 'text-bear'}`}>{fmtPct(pf.totalUnrealizedPnlPct)}</div>
-          </div>
-        </div>
+          <p className="text-xs text-slate-500 mb-6">
+            기준 통화: {pf.baseCurrency}
+            {Object.entries(pf.fxRates).filter(([c]) => c !== pf.baseCurrency).map(([c, r]) => (
+              <span key={c}> · 1 {c} = ${r.toFixed(6)}</span>
+            ))}
+          </p>
+        </>
       )}
 
       {positions.length === 0 ? (
