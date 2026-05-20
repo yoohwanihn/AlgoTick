@@ -105,7 +105,9 @@ export async function sectorHeatmap(market?: string): Promise<SectorRow[]> {
 
   const bySector = new Map<string, { totalChange: number; count: number; volume: number }>();
   for (const t of tickers) {
-    const sector = t.sector ?? 'Unknown';
+    // sector가 null/'-'/'Unknown'인 종목은 의미 없는 집계라 제외
+    const sector = t.sector?.trim();
+    if (!sector || sector === '-' || sector.toLowerCase() === 'unknown') continue;
     const q = latestBySymbol.get(t.symbol);
     if (!q) continue;
     const acc = bySector.get(sector) ?? { totalChange: 0, count: 0, volume: 0 };
