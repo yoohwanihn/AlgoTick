@@ -295,6 +295,23 @@ export class KrNaverAdapter implements MarketAdapter {
           data,
         });
       }
+
+      // marketCap(KRW)을 integration endpoint에서 가져와 모든 period에 inject.
+      // 네이버 finance/annual에는 marketCap이 없어서 screener·valuation에서 KR 종목이 빠지던 문제 보정.
+      // 시점별 정확도는 떨어지지만 현재 시총만 노출하는 screener/valuation 용도로는 충분.
+      if (out.length > 0) {
+        try {
+          const integ = await fetchJson<NaverIntegrationResponse>(INTEG_URL(code));
+          const mvRaw = integ.totalInfos?.find((t) => t.code === 'marketValue')?.value;
+          if (mvRaw) {
+            const mc = parseKrMarketValue(mvRaw);
+            if (Number.isFinite(mc) && mc > 0) {
+              for (const p of out) p.data.marketCap = mc;
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+
       return out;
     } catch (e) {
       if (e instanceof AdapterError) throw e;

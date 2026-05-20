@@ -125,10 +125,17 @@ export async function calculateValuation(symbol: string, inputs: ValuationInputs
 
   const currentPrice = latestQuote ? Number(latestQuote.price) : null;
   const finData = (latestFin?.data ?? {}) as Record<string, number | null>;
-  // sharesOut: derive from marketCap and price if available
-  const marketCapM = finData.marketCapMillionUsd as number | null;
-  const sharesOutstanding = marketCapM && currentPrice ? (marketCapM * 1_000_000) / currentPrice : null;
-  const marketCap = currentPrice && sharesOutstanding ? currentPrice * sharesOutstanding : null;
+  // marketCap 단위: US는 marketCapMillionUsd(USD백만), KR/JP는 marketCap(native currency).
+  // sharesOut = marketCap(native) / currentPrice(native).
+  let marketCap: number | null = null;
+  if (master.currency === 'USD') {
+    const marketCapM = finData.marketCapMillionUsd as number | null;
+    if (marketCapM && marketCapM > 0) marketCap = marketCapM * 1_000_000;
+  } else {
+    const mcNative = finData.marketCap as number | null;
+    if (mcNative && mcNative > 0) marketCap = mcNative;
+  }
+  const sharesOutstanding = marketCap && currentPrice ? marketCap / currentPrice : null;
 
   const rf = inputs.rf ?? DEFAULT_INPUTS.rf;
   const erp = inputs.erp ?? DEFAULT_INPUTS.erp;
