@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { getPrisma } from '../db.js';
+import { getStats as getSseStats } from '../sse/hub.js';
 
 export async function registerOpsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/__stats__', async () => {
@@ -49,6 +50,7 @@ export async function registerOpsRoutes(app: FastifyInstance): Promise<void> {
         warnings: warningsCount,
         errors: errorsCount,
       },
+      sse: getSseStats(),
       recentIngestion: ingestionLog.map((l) => ({
         symbol: l.symbol,
         kind: l.kind,

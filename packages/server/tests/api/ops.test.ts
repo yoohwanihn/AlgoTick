@@ -70,6 +70,12 @@ describe('Ops API', () => {
     expect(typeof body.validationsLast24h.errors).toBe('number');
     expect(Array.isArray(body.recentIngestion)).toBe(true);
 
+    // SSE 통계
+    expect(body.sse).toBeDefined();
+    expect(typeof body.sse.clients).toBe('number');
+    expect(typeof body.sse.uniqueSymbols).toBe('number');
+    expect(typeof body.sse.totalSubscriptions).toBe('number');
+
     // Our seeded rows should be counted in validationsLast24h
     expect(body.validationsLast24h.warnings).toBeGreaterThanOrEqual(1);
     expect(body.validationsLast24h.errors).toBeGreaterThanOrEqual(1);
