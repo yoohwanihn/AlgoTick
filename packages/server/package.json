@@ -26,6 +26,7 @@
     "adm-zip": "^0.5.17",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
+    "iconv-lite": "^0.7.2",
     "node-cron": "^3.0.3",
     "p-limit": "^5.0.0",
     "pino": "^9.3.2",
