@@ -50,7 +50,7 @@ export function TickerTabs({ candles, signals = [], financials = [], news = [], 
       </div>
       <div>
         {active === 'chart' && <ChartPanel candles={candles} signals={signals} />}
-        {active === 'valuation' && <ValuationTab financials={financials} />}
+        {active === 'valuation' && <ValuationTab financials={financials} symbol={symbol} />}
         {active === 'institutional' && <InstitutionalTab trades={insiderTrades} />}
         {active === 'news' && <NewsTab news={news} />}
         {active === 'overview' && <OverviewTab profile={profile} symbol={symbol} market={market} exchange={exchange} currency={currency} />}

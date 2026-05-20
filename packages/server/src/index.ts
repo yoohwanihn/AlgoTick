@@ -13,6 +13,7 @@ import { registerScreenerRoutes } from './api/screener.js';
 import { registerCompareRoutes } from './api/compare.js';
 import { registerMarketRoutes } from './api/market.js';
 import { registerOpsRoutes } from './api/ops.js';
+import { registerValuationRoutes } from './api/valuation.js';
 import { registerErrorHandlers } from './errors.js';
 import { registerSseRoutes } from './sse/routes.js';
 import { startWorker, stopWorker } from './worker/index.js';
@@ -42,6 +43,7 @@ async function buildApp() {
   await registerCompareRoutes(app);
   await registerMarketRoutes(app);
   await registerOpsRoutes(app);
+  await registerValuationRoutes(app);
   await registerSseRoutes(app);
 
   return app;
