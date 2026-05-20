@@ -147,4 +147,19 @@ describe('Valuation API', () => {
     const body = res.json();
     expect(body.error.code).toBe('BAD_REQUEST');
   });
+
+  it('financials/quote 없으면 503 VALUATION_UNAVAILABLE', async () => {
+    await getPrisma().ticker.create({
+      data: { symbol: 'NO_FIN', market: 'JP', exchange: 'TSE', nameEn: 'No Financials', currency: 'JPY' },
+    });
+    try {
+      const res = await app.inject({ method: 'POST', url: '/api/valuation/NO_FIN', payload: {} });
+      expect(res.statusCode).toBe(503);
+      const body = res.json();
+      expect(body.error.code).toBe('VALUATION_UNAVAILABLE');
+      expect(['no_financials', 'no_shares_outstanding']).toContain(body.error.reason);
+    } finally {
+      await getPrisma().ticker.deleteMany({ where: { symbol: 'NO_FIN' } });
+    }
+  });
 });

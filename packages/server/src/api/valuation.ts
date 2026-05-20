@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { calculateValuation } from '../services/valuationService.js';
+import { calculateValuation, ValuationUnavailableError } from '../services/valuationService.js';
 
 const InputSchema = z.object({
   rf: z.number().optional(),
@@ -28,6 +28,10 @@ export async function registerValuationRoutes(app: FastifyInstance): Promise<voi
       const result = await calculateValuation(req.params.symbol, parsed.data);
       return result;
     } catch (e) {
+      if (e instanceof ValuationUnavailableError) {
+        reply.code(503);
+        return { error: { code: 'VALUATION_UNAVAILABLE', reason: e.reason, message: e.message } };
+      }
       reply.code(404);
       return { error: { code: 'NOT_FOUND', message: (e as Error).message } };
     }

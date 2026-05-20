@@ -24,11 +24,23 @@ export interface ValuationResult {
   sensitivity: { waccRange: number[]; growthRange: number[]; matrix: number[][] };
 }
 
+export class ValuationUnavailableError extends Error {
+  constructor(public reason: string, message: string) {
+    super(message);
+    this.name = 'ValuationUnavailableError';
+  }
+}
+
 export async function calculateValuation(symbol: string, inputs: ValuationInputs = {}): Promise<ValuationResult> {
   const res = await fetch(`${API}/api/valuation/${encodeURIComponent(symbol)}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(inputs),
   });
+  if (res.status === 503) {
+    const body = await res.json().catch(() => ({}));
+    const err = body?.error ?? {};
+    throw new ValuationUnavailableError(err.reason ?? 'unknown', err.message ?? '가치평가 불가');
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
