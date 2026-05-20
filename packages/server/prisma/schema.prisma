@@ -40,16 +40,21 @@ model Ticker {
   phone       String?
   ipo         DateTime?
   country     String?
+  // DART fields:
+  dartCorpCode  String?  @unique
+  ceoName       String?
+  foundedDate   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  quotesIntraday QuoteIntraday[]
-  quotesDaily    QuoteDaily[]
-  financials     Financial[]
-  news           News[]
-  insiderTrades  InsiderTrade[]
-  watchlist      Watchlist?
-  portfolioLots  PortfolioLot[]
+  quotesIntraday       QuoteIntraday[]
+  quotesDaily          QuoteDaily[]
+  financials           Financial[]
+  news                 News[]
+  insiderTrades        InsiderTrade[]
+  institutionalHoldings InstitutionalHolding[]
+  watchlist            Watchlist?
+  portfolioLots        PortfolioLot[]
 
   @@index([market])
   @@index([exchange])
@@ -185,6 +190,27 @@ model PortfolioLot {
 
   @@index([symbol, tradedAt(sort: Desc)])
   @@map("portfolio_lots")
+}
+
+model InstitutionalHolding {
+  id             String   @id @default(uuid())
+  symbol         String
+  externalId     String   // upsert key (rcept_no or composite)
+  holderName     String   // 보고자
+  reportDate     DateTime // rcept_dt
+  shares         BigInt   // stkqy
+  pctOfFloat     Decimal? @db.Decimal(8, 4)  // stkrt (지분율 %)
+  prevShares     BigInt?  // bsis_pstn_stkqy
+  prevPctOfFloat Decimal? @db.Decimal(8, 4)
+  source         String   // "dart" / "sec"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ticker Ticker @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  @@unique([symbol, externalId])
+  @@index([symbol, reportDate(sort: Desc)])
+  @@map("institutional_holdings")
 }
 
 model ValidationResult {
