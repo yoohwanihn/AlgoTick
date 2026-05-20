@@ -29,4 +29,25 @@ describe('GET /api/search', () => {
     const res = await app.inject({ method: 'GET', url: '/api/search' });
     expect(res.statusCode).toBe(400);
   });
+
+  it('score ordering: 정확 매치가 prefix·contains보다 위로', async () => {
+    const prisma = getPrisma();
+    await prisma.ticker.deleteMany({ where: { symbol: { in: ['SCORE', 'SCORED', 'SCOREDX'] } } });
+    await prisma.ticker.createMany({
+      data: [
+        { symbol: 'SCOREDX', market: 'US', exchange: 'NASDAQ', nameEn: 'Score Suffix X', currency: 'USD' },
+        { symbol: 'SCORED', market: 'US', exchange: 'NASDAQ', nameEn: 'Scored Co', currency: 'USD' },
+        { symbol: 'SCORE', market: 'US', exchange: 'NASDAQ', nameEn: 'Score Inc', currency: 'USD' },
+      ],
+    });
+    try {
+      const res = await app.inject({ method: 'GET', url: '/api/search?q=SCORE' });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // SCORE 정확 매치가 가장 위
+      expect(body.results[0]?.symbol).toBe('SCORE');
+    } finally {
+      await prisma.ticker.deleteMany({ where: { symbol: { in: ['SCORE', 'SCORED', 'SCOREDX'] } } });
+    }
+  });
 });
