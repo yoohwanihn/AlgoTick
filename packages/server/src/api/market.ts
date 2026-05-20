@@ -9,6 +9,10 @@ const MoverQuery = MarketQuery.extend({
   direction: z.enum(['up', 'down', 'volume']).default('up'),
   limit: z.coerce.number().int().positive().max(50).default(10),
 });
+const EventQuery = MarketQuery.extend({
+  daysAhead: z.coerce.number().int().positive().max(30).default(7),
+  limit: z.coerce.number().int().positive().max(5000).default(500),
+});
 
 export async function registerMarketRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/market/indices', async (req) => {
@@ -32,9 +36,11 @@ export async function registerMarketRoutes(app: FastifyInstance): Promise<void> 
   });
 
   app.get('/api/market/events', async (req) => {
-    const parsed = MarketQuery.safeParse(req.query);
-    const market = parsed.success ? parsed.data.market : undefined;
-    return { items: await listMarketEvents(7, market) };
+    const parsed = EventQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return { items: await listMarketEvents(7, undefined, 500) };
+    }
+    return { items: await listMarketEvents(parsed.data.daysAhead, parsed.data.market, parsed.data.limit) };
   });
 
   app.get('/api/market/news', async () => ({ items: await listMarketNews(30) }));

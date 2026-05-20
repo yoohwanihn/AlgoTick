@@ -115,7 +115,8 @@ describe('Market API', () => {
   });
 
   it('GET /api/market/events returns array (may be empty)', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/market/events' });
+    // 시드 데이터가 많은 환경에서도 우리 테스트 이벤트가 잘리지 않도록 큰 limit으로 조회
+    const res = await app.inject({ method: 'GET', url: '/api/market/events?limit=5000' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(Array.isArray(body.items)).toBe(true);
