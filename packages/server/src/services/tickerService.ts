@@ -158,7 +158,7 @@ export async function getTickerDetail(
       ...detail,
       market: master.market,
       exchange: master.exchange,
-      name: master.nameEn ?? master.nameKo ?? undefined,
+      name: master.nameKo ?? master.nameEn ?? undefined,
       currency: master.currency,
     },
     freshness,
@@ -408,7 +408,7 @@ async function readDetailFromDb(symbol: string): Promise<Omit<TickerDetail, 'mar
   const prisma = getPrisma();
   const masterRow = await prisma.ticker.findUnique({ where: { symbol } });
   const profile: ProfileResponse | null = masterRow ? {
-    name: masterRow.nameEn ?? masterRow.nameKo ?? undefined,
+    name: masterRow.nameKo ?? masterRow.nameEn ?? undefined,
     description: masterRow.description ?? undefined,
     weburl: masterRow.weburl ?? undefined,
     logo: masterRow.logo ?? undefined,

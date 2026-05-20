@@ -153,7 +153,7 @@ export async function topMovers(direction: 'up' | 'down' | 'volume', market?: st
       const q = latest.get(t.symbol)!;
       return {
         symbol: t.symbol,
-        name: t.nameEn ?? t.nameKo ?? t.symbol,
+        name: t.nameKo ?? t.nameEn ?? t.symbol,
         market: t.market,
         exchange: t.exchange,
         currency: t.currency,

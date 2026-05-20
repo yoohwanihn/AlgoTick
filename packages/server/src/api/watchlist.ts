@@ -31,7 +31,7 @@ export async function registerWatchlistRoutes(app: FastifyInstance): Promise<voi
           memo: r.memo,
           addedAt: r.addedAt.toISOString(),
           position: r.position,
-          name: r.ticker.nameEn ?? r.ticker.nameKo ?? r.symbol,
+          name: r.ticker.nameKo ?? r.ticker.nameEn ?? r.symbol,
           market: r.ticker.market,
           exchange: r.ticker.exchange,
           currency: r.ticker.currency,
