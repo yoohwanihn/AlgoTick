@@ -175,14 +175,24 @@ export async function refreshMarketContent(): Promise<{ newsAdded: number; event
   const prisma = getPrisma();
   let newsAdded = 0; let eventsAdded = 0;
 
-  // News
+  // News — Finnhub general이 같은 기사를 다른 id로 push하는 경우 있어 title 기반 dedup 보강
   try {
     const url = `https://finnhub.io/api/v1/news?category=general&token=${cfg.finnhubApiKey}`;
     const res = await request(url, { headers: { 'User-Agent': UA, accept: 'application/json' } });
     if (res.statusCode < 400) {
       const body = await res.body.json() as Array<{ id?: number; datetime?: number; headline?: string; source?: string; url?: string; summary?: string }>;
+      // 최근 48시간 시장 뉴스 제목을 fingerprint set으로 로드
+      const recent = await prisma.news.findMany({
+        where: { scope: 'market', publishedAt: { gte: new Date(Date.now() - 48 * 3600_000) } },
+        select: { title: true },
+        take: 500,
+      });
+      const seenTitles = new Set<string>(recent.map((r) => r.title.toLowerCase().trim()));
       for (const n of body.slice(0, 30)) {
         if (!n.headline || !n.url) continue;
+        const titleKey = n.headline.toLowerCase().trim();
+        if (seenTitles.has(titleKey)) continue;
+        seenTitles.add(titleKey);
         const externalId = `finnhub-market-${n.id ?? n.url}`;
         try {
           await prisma.news.create({
@@ -306,13 +316,24 @@ export interface MarketNewsRow {
 
 export async function listMarketNews(limit = 30): Promise<MarketNewsRow[]> {
   const prisma = getPrisma();
+  // 기존에 들어간 중복(같은 기사가 다른 externalId로 저장된 경우) 보호:
+  // 응답 단계에서 title 기준 1회만 노출. 풀이 작아질 수 있어 4배수로 over-fetch.
   const rows = await prisma.news.findMany({
     where: { scope: 'market' },
     orderBy: { publishedAt: 'desc' },
-    take: limit,
+    take: limit * 4,
   });
-  return rows.map((r) => ({
-    id: r.id, title: r.title, source: r.source, url: r.url, summary: r.summary,
-    publishedAt: r.publishedAt.toISOString(),
-  }));
+  const seen = new Set<string>();
+  const out: MarketNewsRow[] = [];
+  for (const r of rows) {
+    const key = r.title.toLowerCase().trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      id: r.id, title: r.title, source: r.source, url: r.url, summary: r.summary,
+      publishedAt: r.publishedAt.toISOString(),
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
 }
