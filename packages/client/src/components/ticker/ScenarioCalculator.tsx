@@ -395,7 +395,9 @@ export function ScenarioCalculator({ symbol }: ScenarioCalculatorProps) {
           {mutation.isPending ? '계산 중...' : '계산'}
         </button>
         {mutation.isError && (
-          <p className="text-xs text-red-500">오류: {(mutation.error as Error).message}</p>
+          (mutation.error as Error).name === 'ValuationUnavailableError'
+            ? <p className="text-xs text-amber-500">가치평가 불가: {(mutation.error as Error).message}</p>
+            : <p className="text-xs text-red-500">오류: {(mutation.error as Error).message}</p>
         )}
         {mutation.isSuccess && !mutation.isPending && (
           <p className="text-xs text-emerald-500">완료</p>

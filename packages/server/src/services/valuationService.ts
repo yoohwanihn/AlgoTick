@@ -1,5 +1,12 @@
 import { getPrisma } from '../db.js';
 
+export class ValuationUnavailableError extends Error {
+  constructor(public reason: string, message: string) {
+    super(message);
+    this.name = 'ValuationUnavailableError';
+  }
+}
+
 export interface ValuationInputs {
   // Optional overrides — server fills defaults from financials
   rf?: number;                  // default 0.04 (US treasury 10Y proxy)
@@ -148,9 +155,18 @@ export async function calculateValuation(symbol: string, inputs: ValuationInputs
       fcfBase = marketCap * 0.05;
       fcfBaseOrigin = 'estimated_5pct_marketcap';
     } else {
-      fcfBase = 1_000_000_000;  // dummy
-      fcfBaseOrigin = 'dummy_no_data';
+      throw new ValuationUnavailableError(
+        'no_financials',
+        'marketCap 또는 PER 데이터 없음 — financials 미수집 또는 외부 API 미지원 종목',
+      );
     }
+  }
+
+  if (!sharesOutstanding || sharesOutstanding <= 0) {
+    throw new ValuationUnavailableError(
+      'no_shares_outstanding',
+      'sharesOutstanding 추정 불가 — marketCap/price 부족',
+    );
   }
 
   const scenarios = inputs.scenarios ?? DEFAULT_SCENARIOS;
