@@ -167,7 +167,7 @@ export async function getTickerDetail(
   };
 }
 
-async function refreshTicker(
+export async function refreshTicker(
   symbol: string,
   adapter: MarketAdapter,
   market: Market,
