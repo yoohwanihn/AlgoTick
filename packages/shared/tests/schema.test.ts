@@ -29,7 +29,7 @@ describe('TickerSchema', () => {
 
   it('rejects invalid market', () => {
     expect(() => TickerSchema.parse({
-      symbol: 'X', market: 'JP', exchange: 'TSE', currency: 'JPY',
+      symbol: 'X', market: 'CN', exchange: 'NASDAQ', currency: 'CNY',
     })).toThrow();
   });
 });
