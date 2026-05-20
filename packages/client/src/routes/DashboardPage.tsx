@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { useWatchlist } from '../hooks/useWatchlist.js';
-
-function fmtPrice(price: number, currency: string): string {
-  if (currency === 'KRW') return `${Math.round(price).toLocaleString('ko-KR')}원`;
-  return `$${price.toFixed(2)}`;
-}
+import { formatPrice } from '../util/format.js';
 
 export function DashboardPage() {
   const { data, isLoading } = useWatchlist();
@@ -51,7 +47,7 @@ export function DashboardPage() {
               <div className="text-sm text-slate-600 dark:text-slate-400 truncate mb-2">{it.name}</div>
               {it.quote ? (
                 <div className="flex items-baseline justify-between">
-                  <span className="text-lg font-semibold">{fmtPrice(it.quote.price, it.currency)}</span>
+                  <span className="text-lg font-semibold">{formatPrice(it.quote.price, it.currency)}</span>
                   <span className={up ? 'text-bull text-sm' : 'text-bear text-sm'}>
                     {up ? '+' : ''}{it.quote.changePct.toFixed(2)}%
                   </span>
