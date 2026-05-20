@@ -17,9 +17,14 @@ enum Market {
 enum Exchange {
   NASDAQ
   NYSE
+  AMEX
+  OTC
   KOSPI
   KOSDAQ
+  KONEX
   TSE
+  TSE_STANDARD
+  TSE_GROWTH
 }
 
 model Ticker {
@@ -41,7 +46,8 @@ model Ticker {
   ipo         DateTime?
   country     String?
   // DART fields:
-  dartCorpCode  String?  @unique
+  // 우선주 등은 동일 회사라 같은 corp_code를 공유하므로 @unique 두지 않음 (1 corpCode : N ticker).
+  dartCorpCode  String?
   ceoName       String?
   foundedDate   DateTime?
   createdAt   DateTime  @default(now())
