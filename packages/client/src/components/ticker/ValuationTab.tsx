@@ -1,5 +1,6 @@
 import type { FinancialPeriod } from '../../types/api.js';
 import { Metric } from '../ui/Metric.js';
+import { ScenarioCalculator } from './ScenarioCalculator.js';
 
 const ROW_LABELS: Array<{ key: string; label: string; format: 'amount' | 'percent' | 'multiple' | 'price' | 'beta' }> = [
   // KR-style (네이버) fields
@@ -36,12 +37,15 @@ function formatVal(v: number | null | undefined, fmt: string): string {
   return v.toLocaleString();
 }
 
-export function ValuationTab({ financials }: { financials: FinancialPeriod[] }) {
+export function ValuationTab({ financials, symbol }: { financials: FinancialPeriod[]; symbol: string }) {
   if (financials.length === 0) {
     return (
-      <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-8 text-center text-slate-500">
-        <p className="text-sm">재무 데이터 없음</p>
-        <p className="text-xs mt-1">미주 종목은 Stage 5b(Finnhub 통합) 이후 표시됩니다.</p>
+      <div className="space-y-6">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-8 text-center text-slate-500">
+          <p className="text-sm">재무 데이터 없음</p>
+          <p className="text-xs mt-1">미주 종목은 Stage 5b(Finnhub 통합) 이후 표시됩니다.</p>
+        </div>
+        <ScenarioCalculator symbol={symbol} />
       </div>
     );
   }
@@ -96,6 +100,8 @@ export function ValuationTab({ financials }: { financials: FinancialPeriod[] }) 
       <p className="text-xs text-slate-400">
         출처: {latest?.source ?? 'n/a'} · 단위는 회사 공시 단위(억원/원). DCF/Comps/민감도는 Stage 5b 이후.
       </p>
+
+      <ScenarioCalculator symbol={symbol} />
     </div>
   );
 }

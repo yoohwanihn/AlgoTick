@@ -42,6 +42,23 @@ export const handlers = [
   http.get(`${BASE}/api/market/events`, () => HttpResponse.json({ items: [] })),
   http.get(`${BASE}/api/market/news`, () => HttpResponse.json({ items: [] })),
 
+  http.post(`${BASE}/api/valuation/:symbol`, () => HttpResponse.json({
+    symbol: 'MOCK', currency: 'USD', currentPrice: 100, sharesOutstanding: 1_000_000_000,
+    inputs: { wacc: 0.095, rf: 0.04, erp: 0.055, beta: 1.0, taxRate: 0.2, terminalGrowth: 0.025, forecastYears: 5, fcfBase: 5_000_000_000, fcfBaseOriginEstimate: 'estimated_from_per' },
+    reverseDcf: { impliedGrowthHigh: 0.08, note: 'mock' },
+    forwardDcf: {
+      scenarios: [
+        { name: 'bull', growthHigh: 0.20, prob: 0.25, enterpriseValue: 150_000_000_000, equityValue: 150_000_000_000, perShare: 150, upside: 50 },
+        { name: 'base', growthHigh: 0.10, prob: 0.50, enterpriseValue: 100_000_000_000, equityValue: 100_000_000_000, perShare: 100, upside: 0 },
+        { name: 'bear', growthHigh: 0.03, prob: 0.25, enterpriseValue: 70_000_000_000, equityValue: 70_000_000_000, perShare: 70, upside: -30 },
+      ],
+      probabilityWeightedPerShare: 105,
+      upsideToWeighted: 5,
+    },
+    comps: { peerSector: 'Technology', peersUsed: 5, avgPer: 25, avgPbr: 5, avgPsr: 3, impliedPriceByPer: 110, impliedPriceByPbr: 90 },
+    sensitivity: { waccRange: [0.075, 0.085, 0.095, 0.105, 0.115], growthRange: [0.06, 0.08, 0.10, 0.12, 0.14], matrix: [[120,130,140,150,160],[110,120,130,140,150],[100,110,120,130,140],[90,100,110,120,130],[80,90,100,110,120]] },
+  })),
+
   http.get(`${BASE}/api/ticker/:symbol`, ({ params }) => {
     const symbol = params.symbol as string;
     if (symbol === '__NOPE__') {
