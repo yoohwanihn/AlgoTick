@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { useWatchlist } from '../hooks/useWatchlist.js';
-import { formatPrice } from '../util/format.js';
+import { formatPrice, formatQuoteTime } from '../util/format.js';
 
 export function DashboardPage() {
   const { data, isLoading } = useWatchlist();
@@ -46,12 +46,15 @@ export function DashboardPage() {
               </div>
               <div className="text-sm text-slate-600 dark:text-slate-400 truncate mb-2">{it.name}</div>
               {it.quote ? (
-                <div className="flex items-baseline justify-between">
-                  <span className="text-lg font-semibold">{formatPrice(it.quote.price, it.currency)}</span>
-                  <span className={up ? 'text-bull text-sm' : 'text-bear text-sm'}>
-                    {up ? '+' : ''}{it.quote.changePct.toFixed(2)}%
-                  </span>
-                </div>
+                <>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-lg font-semibold">{formatPrice(it.quote.price, it.currency)}</span>
+                    <span className={up ? 'text-bull text-sm' : 'text-bear text-sm'}>
+                      {up ? '+' : ''}{it.quote.changePct.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">{formatQuoteTime(it.quote.ts)} 기준</div>
+                </>
               ) : (
                 <p className="text-xs text-slate-400">시세 없음 (페치 대기)</p>
               )}
