@@ -88,6 +88,17 @@ export interface CompanyProfile {
   sector?: string;
 }
 
+export interface InstitutionalHolding {
+  id: string;
+  holderName: string;
+  reportDate: string;
+  shares: number;
+  pctOfFloat?: number;
+  prevShares?: number;
+  prevPctOfFloat?: number;
+  source: string;
+}
+
 export interface TickerDetailData {
   symbol: string;
   market: string;
@@ -101,6 +112,7 @@ export interface TickerDetailData {
   financials: FinancialPeriod[];
   news: NewsItem[];
   insiderTrades: InsiderTrade[];
+  institutionalHoldings: InstitutionalHolding[];
   profile: CompanyProfile | null;
 }
 

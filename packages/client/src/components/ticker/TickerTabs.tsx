@@ -4,7 +4,7 @@ import { ValuationTab } from './ValuationTab.js';
 import { NewsTab } from './NewsTab.js';
 import { InstitutionalTab } from './InstitutionalTab.js';
 import { OverviewTab } from './OverviewTab.js';
-import type { TickerCandle, Signal, FinancialPeriod, NewsItem, InsiderTrade, CompanyProfile } from '../../types/api.js';
+import type { TickerCandle, Signal, FinancialPeriod, NewsItem, InsiderTrade, InstitutionalHolding, CompanyProfile } from '../../types/api.js';
 
 type TabKey = 'chart' | 'valuation' | 'institutional' | 'news' | 'overview';
 
@@ -22,6 +22,7 @@ interface Props {
   financials?: FinancialPeriod[];
   news?: NewsItem[];
   insiderTrades?: InsiderTrade[];
+  institutionalHoldings?: InstitutionalHolding[];
   profile?: CompanyProfile | null;
   symbol: string;
   market: string;
@@ -29,7 +30,7 @@ interface Props {
   currency: string;
 }
 
-export function TickerTabs({ candles, signals = [], financials = [], news = [], insiderTrades = [], profile = null, symbol, market, exchange, currency }: Props) {
+export function TickerTabs({ candles, signals = [], financials = [], news = [], insiderTrades = [], institutionalHoldings = [], profile = null, symbol, market, exchange, currency }: Props) {
   const [active, setActive] = useState<TabKey>('chart');
   return (
     <div>
@@ -51,7 +52,7 @@ export function TickerTabs({ candles, signals = [], financials = [], news = [], 
       <div>
         {active === 'chart' && <ChartPanel candles={candles} signals={signals} />}
         {active === 'valuation' && <ValuationTab financials={financials} symbol={symbol} />}
-        {active === 'institutional' && <InstitutionalTab trades={insiderTrades} />}
+        {active === 'institutional' && <InstitutionalTab trades={insiderTrades} holdings={institutionalHoldings} />}
         {active === 'news' && <NewsTab news={news} />}
         {active === 'overview' && <OverviewTab profile={profile} symbol={symbol} market={market} exchange={exchange} currency={currency} />}
       </div>

@@ -1,6 +1,8 @@
 import { request } from 'undici';
 import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem, CompanyProfile } from './base.js';
 import { AdapterError } from './base.js';
+import { dartGetInsiderTrades, dartGetProfile } from './kr-dart.js';
+import { getPrisma } from '../db.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
 const INTEG_URL = (code: string) => `https://m.stock.naver.com/api/stock/${encodeURIComponent(code)}/integration`;
@@ -238,15 +240,26 @@ export class KrNaverAdapter implements MarketAdapter {
     }
   }
 
-  async getInsiderTrades(_symbol: string, _limit = 50): Promise<InsiderTradeItem[]> {
-    // KR insider trades come from DART (대량보유공시·임원지분변동). Requires DART_API_KEY + corp_code mapping.
-    // Stage 5e에서 DART 어댑터 통합 시 활성화.
-    return [];
+  async getInsiderTrades(symbol: string, limit = 50): Promise<InsiderTradeItem[]> {
+    const prisma = getPrisma();
+    const master = await prisma.ticker.findUnique({ where: { symbol } });
+    if (!master?.dartCorpCode) return [];
+    try {
+      return await dartGetInsiderTrades(symbol, master.dartCorpCode, limit);
+    } catch (_e) {
+      return [];
+    }
   }
 
-  async getProfile(_symbol: string): Promise<CompanyProfile | null> {
-    // KR profiles는 tickers 시드의 sector/industry로 이미 충분. 본격 회사 소개는 DART corp profile에서 (Stage 5e+ 이후).
-    return null;
+  async getProfile(symbol: string): Promise<CompanyProfile | null> {
+    const prisma = getPrisma();
+    const master = await prisma.ticker.findUnique({ where: { symbol } });
+    if (!master?.dartCorpCode) return null;
+    try {
+      return await dartGetProfile(master.dartCorpCode);
+    } catch (_e) {
+      return null;
+    }
   }
 
   async getFinancials(symbol: string): Promise<FinancialPeriod[]> {
