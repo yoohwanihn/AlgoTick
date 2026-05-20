@@ -49,6 +49,16 @@ export function getClientCount(): number {
   return clients.size;
 }
 
+export function getStats(): { clients: number; uniqueSymbols: number; totalSubscriptions: number } {
+  let totalSubscriptions = 0;
+  const all = new Set<string>();
+  for (const c of clients.values()) {
+    totalSubscriptions += c.symbols.size;
+    for (const s of c.symbols) all.add(s);
+  }
+  return { clients: clients.size, uniqueSymbols: all.size, totalSubscriptions };
+}
+
 export function _resetForTests(): void {
   clients.clear();
 }
