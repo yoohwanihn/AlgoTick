@@ -12,7 +12,7 @@ export async function registerTickerRoute(app: FastifyInstance): Promise<void> {
       return { error: { code: 'NOT_FOUND', message: `Ticker ${symbol} not found` } };
     }
     try {
-      const adapter = getAdapter(master.market as 'US' | 'KR');
+      const adapter = getAdapter(master.market as 'US' | 'KR' | 'JP');
       const result = await getTickerDetail(symbol, adapter);
       return result;
     } catch (e) {

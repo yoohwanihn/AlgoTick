@@ -1,9 +1,11 @@
 const numberFormatter = new Intl.NumberFormat('en-US');
 const krwFormatter = new Intl.NumberFormat('ko-KR');
+const jpyFormatter = new Intl.NumberFormat('ja-JP');
 
 export function formatPrice(value: number, currency: string): string {
   if (!Number.isFinite(value)) return '-';
   if (currency === 'KRW') return `${krwFormatter.format(Math.round(value))}원`;
+  if (currency === 'JPY') return `¥${jpyFormatter.format(Math.round(value))}`;
   return `$${value.toFixed(2)}`;
 }
 

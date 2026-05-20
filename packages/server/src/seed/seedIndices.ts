@@ -8,6 +8,9 @@ const INDICES = [
   { code: '^KS11', name: 'KOSPI',     market: 'KR', kind: 'index',      position: 5 },
   { code: '^KQ11', name: 'KOSDAQ',    market: 'KR', kind: 'index',      position: 6 },
   { code: 'KRW=X', name: 'USD/KRW',   market: 'GLOBAL', kind: 'fx',    position: 7 },
+  { code: '^N225', name: 'Nikkei 225', market: 'JP',    kind: 'index',  position: 8 },
+  { code: '^TOPX', name: 'TOPIX',      market: 'JP',    kind: 'index',  position: 9 },
+  { code: 'JPY=X', name: 'USD/JPY',    market: 'GLOBAL', kind: 'fx',   position: 10 },
 ];
 
 async function main() {
