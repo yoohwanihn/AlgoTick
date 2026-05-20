@@ -1,16 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio, useLots, useAddLot, useDeleteLot } from '../hooks/usePortfolio.js';
+import { formatPrice as fmt, formatPct as fmtPctBase } from '../util/format.js';
 
-function fmt(v: number | null | undefined, currency = 'USD'): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '-';
-  if (currency === 'KRW') return `${Math.round(v).toLocaleString('ko-KR')}원`;
-  return `$${v.toFixed(2)}`;
-}
 function fmtPct(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '-';
-  const sign = v > 0 ? '+' : '';
-  return `${sign}${v.toFixed(2)}%`;
+  return fmtPctBase(v, { sign: true });
 }
 function inputDateNow(): string {
   return new Date().toISOString().slice(0, 16);

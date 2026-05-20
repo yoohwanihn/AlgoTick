@@ -2,20 +2,9 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useCompare } from '../hooks/useCompare.js';
 import type { ComparePosition } from '../hooks/useCompare.js';
+import { formatPrice as fmtPrice, formatPct as fmtPct } from '../util/format.js';
 
 const COLORS = ['#3b82f6', '#10b981', '#ef4444'];
-
-function fmtPrice(v: number | null | undefined, currency: string): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '-';
-  if (currency === 'KRW') return `${Math.round(v).toLocaleString('ko-KR')}원`;
-  return `$${v.toFixed(2)}`;
-}
-
-function fmtPct(v: number | null | undefined, opts?: { sign?: boolean }): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '-';
-  const sign = opts?.sign && v > 0 ? '+' : '';
-  return `${sign}${v.toFixed(2)}%`;
-}
 
 function fmtMul(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return '-';

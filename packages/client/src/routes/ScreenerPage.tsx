@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useScreenerRules, useRunScreener, useSaveRule, useDeleteRule } from '../hooks/useScreener.js';
 import type { ScreenerCondition, ScreenerField, ScreenerOp, ScreenerHit } from '../api/screener.js';
+import { formatPrice as fmtPrice, formatPct as fmtPctBase } from '../util/format.js';
 
 const FIELD_OPTIONS: { value: ScreenerField; label: string }[] = [
   { value: 'per', label: 'PER' },
@@ -9,8 +10,8 @@ const FIELD_OPTIONS: { value: ScreenerField; label: string }[] = [
   { value: 'roePct', label: 'ROE (%)' },
   { value: 'price', label: '현재가' },
   { value: 'changePct', label: '등락률 (%)' },
-  { value: 'marketCap', label: '시가총액 ($M, US-only)' },
-  { value: 'market', label: '시장 (US/KR)' },
+  { value: 'marketCap', label: '시가총액 (native, US: $M)' },
+  { value: 'market', label: '시장 (US/KR/JP)' },
 ];
 
 const OP_OPTIONS: { value: ScreenerOp; label: string }[] = [
@@ -28,15 +29,7 @@ function fmtNum(v: number | null | undefined): string {
 }
 
 function fmtPct(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '-';
-  const sign = v > 0 ? '+' : '';
-  return `${sign}${v.toFixed(2)}%`;
-}
-
-function fmtPrice(v: number | null | undefined, currency: string): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '-';
-  if (currency === 'KRW') return `${Math.round(v).toLocaleString('ko-KR')}원`;
-  return `$${v.toFixed(2)}`;
+  return fmtPctBase(v, { sign: true });
 }
 
 function defaultCondition(): ScreenerCondition {
