@@ -1,6 +1,7 @@
 import { request } from 'undici';
 import { getPrisma } from '../db.js';
 import { loadConfig } from '../config.js';
+import { decodeHtmlEntities } from '../util/html.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
 
@@ -192,7 +193,9 @@ export async function refreshMarketContent(): Promise<{ newsAdded: number; event
       const seenTitles = new Set<string>(recent.map((r) => r.title.toLowerCase().trim()));
       for (const n of body.slice(0, 30)) {
         if (!n.headline || !n.url) continue;
-        const titleKey = n.headline.toLowerCase().trim();
+        const title = decodeHtmlEntities(n.headline);
+        const summary = n.summary ? decodeHtmlEntities(n.summary) : undefined;
+        const titleKey = title.toLowerCase().trim();
         if (seenTitles.has(titleKey)) continue;
         seenTitles.add(titleKey);
         const externalId = `finnhub-market-${n.id ?? n.url}`;
@@ -201,10 +204,10 @@ export async function refreshMarketContent(): Promise<{ newsAdded: number; event
             data: {
               symbol: null, scope: 'market', market: 'GLOBAL',
               externalId,
-              title: n.headline,
+              title,
               source: n.source,
               url: n.url,
-              summary: n.summary,
+              summary,
               publishedAt: n.datetime ? new Date(n.datetime * 1000) : new Date(),
             },
           });

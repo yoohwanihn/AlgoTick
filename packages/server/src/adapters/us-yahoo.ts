@@ -2,6 +2,7 @@ import { request } from 'undici';
 import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialPeriod, NewsItem, InsiderTradeItem, CompanyProfile } from './base.js';
 import { AdapterError } from './base.js';
 import { loadConfig } from '../config.js';
+import { decodeHtmlEntities } from '../util/html.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
 
@@ -254,10 +255,10 @@ export class UsYahooAdapter implements MarketAdapter {
         .slice(0, limit)
         .map((n): NewsItem => ({
           externalId: `finnhub-${n.id ?? n.url ?? n.headline ?? ''}`,
-          title: n.headline as string,
+          title: decodeHtmlEntities(n.headline as string),
           source: n.source,
           url: n.url as string,
-          summary: n.summary && n.summary.length > 0 ? n.summary : undefined,
+          summary: n.summary && n.summary.length > 0 ? decodeHtmlEntities(n.summary) : undefined,
           publishedAt: n.datetime ? new Date(n.datetime * 1000) : new Date(),
         }));
     } catch (_e) {
