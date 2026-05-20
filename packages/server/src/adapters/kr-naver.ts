@@ -3,6 +3,7 @@ import type { MarketAdapter, QuoteResult, CandleResult, SearchResult, FinancialP
 import { AdapterError } from './base.js';
 import { dartGetInsiderTrades, dartGetProfile } from './kr-dart.js';
 import { getPrisma } from '../db.js';
+import { decodeHtmlEntities } from '../util/html.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AlgoTick/0.1';
 const INTEG_URL = (code: string) => `https://m.stock.naver.com/api/stock/${encodeURIComponent(code)}/integration`;
@@ -229,10 +230,10 @@ export class KrNaverAdapter implements MarketAdapter {
         .slice(0, limit)
         .map((n): NewsItem => ({
           externalId: `naver-${n.officeId}-${n.articleId}`,
-          title: n.title,
+          title: decodeHtmlEntities(n.title),
           source: n.officeName,
           url: `https://n.news.naver.com/article/${n.officeId}/${n.articleId}`,
-          summary: n.body && n.body.length > 0 ? n.body.slice(0, 200) : undefined,
+          summary: n.body && n.body.length > 0 ? decodeHtmlEntities(n.body).slice(0, 200) : undefined,
           publishedAt: parseNaverNewsDatetime(n.datetime),
         }));
     } catch (_e) {
