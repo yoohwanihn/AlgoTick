@@ -93,7 +93,7 @@ export interface SectorRow {
 export async function sectorHeatmap(market?: string): Promise<SectorRow[]> {
   const prisma = getPrisma();
   const tickers = await prisma.ticker.findMany({
-    where: market ? { market: market as 'US' | 'KR' } : {},
+    where: market ? { market: market as 'US' | 'KR' | 'JP' } : {},
   });
   const symbols = tickers.map((t) => t.symbol);
   const quotes = await prisma.quoteIntraday.findMany({
@@ -133,7 +133,7 @@ export interface MoverRow {
 export async function topMovers(direction: 'up' | 'down' | 'volume', market?: string, limit = 10): Promise<MoverRow[]> {
   const prisma = getPrisma();
   const tickers = await prisma.ticker.findMany({
-    where: market ? { market: market as 'US' | 'KR' } : {},
+    where: market ? { market: market as 'US' | 'KR' | 'JP' } : {},
   });
   const symbols = tickers.map((t) => t.symbol);
   if (symbols.length === 0) return [];

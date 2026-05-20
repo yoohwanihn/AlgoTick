@@ -5,7 +5,7 @@ import {
 } from '../hooks/useMarket.js';
 import type { IndexSnapshot, SectorRow, MoverRow, MarketEventRow, MarketNewsRow } from '../hooks/useMarket.js';
 
-type MarketFilter = 'US' | 'KR' | 'GLOBAL';
+type MarketFilter = 'US' | 'KR' | 'JP' | 'GLOBAL';
 
 function pctColor(v: number | null): string {
   if (v === null) return '';
@@ -215,6 +215,7 @@ export function MarketPage() {
   const marketButtons: { value: MarketFilter; label: string }[] = [
     { value: 'US', label: '미국' },
     { value: 'KR', label: '한국' },
+    { value: 'JP', label: '🇯🇵 일본' },
     { value: 'GLOBAL', label: '글로벌' },
   ];
 

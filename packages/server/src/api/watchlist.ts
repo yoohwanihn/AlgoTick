@@ -67,7 +67,7 @@ export async function registerWatchlistRoutes(app: FastifyInstance): Promise<voi
       create: { symbol: parsed.data.symbol, memo: parsed.data.memo, position: (last?.position ?? 0) + 1 },
     });
     // 추가 직후 데이터 페치 트리거 (best-effort)
-    void getTickerDetail(parsed.data.symbol, getAdapter(master.market as 'US' | 'KR')).catch(() => undefined);
+    void getTickerDetail(parsed.data.symbol, getAdapter(master.market as 'US' | 'KR' | 'JP')).catch(() => undefined);
     return { ok: true, item };
   });
 
